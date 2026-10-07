@@ -22,6 +22,8 @@ import { Register } from '../pages/Register.jsx';
 import { Login } from '../pages/Login.jsx';
 import { AdminLogin } from '../pages/AdminLogin.jsx';
 import { Dashboard } from '../pages/Dashboard.jsx';
+import { Learn } from '../pages/Learn.jsx';
+import { AdminDashboard } from '../pages/AdminDashboard.jsx';
 
 /**
  * Reusable Declarative Route Configuration
@@ -72,15 +74,7 @@ export const routeConfig = [
     path: ROUTES.LEARN,
     title: 'Learn',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="Learn Curriculum"
-        path={ROUTES.LEARN}
-        type="Protected"
-        icon={BookOpen}
-        description="Structured computer science curricula, data structures, algorithms, and interactive tutorials."
-      />
-    ),
+    element: <Learn />,
   },
   {
     path: ROUTES.PRACTICE,
@@ -228,14 +222,6 @@ export const routeConfig = [
     path: ROUTES.ADMIN,
     title: 'Admin Portal',
     type: 'Admin',
-    element: (
-      <RoutePlaceholder
-        title="Admin Portal"
-        path={ROUTES.ADMIN}
-        type="Admin"
-        icon={Shield}
-        description="Restricted platform management console. Administrative privileges required."
-      />
-    ),
+    element: <AdminDashboard />,
   },
 ];

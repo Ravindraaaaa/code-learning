@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDashboard } from '../controllers/dashboardController.js';
 import { getStudentLanguage, selectLanguage } from '../controllers/languageController.js';
+import { getStudentTrack, selectTrack } from '../controllers/trackController.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
@@ -14,5 +15,12 @@ router.get('/language', requireAuth, getStudentLanguage);
 // POST /api/v1/student/language (or PUT)
 router.post('/language', requireAuth, selectLanguage);
 router.put('/language', requireAuth, selectLanguage);
+
+// GET /api/v1/student/track
+router.get('/track', requireAuth, getStudentTrack);
+
+// POST /api/v1/student/track (or PUT)
+router.post('/track', requireAuth, selectTrack);
+router.put('/track', requireAuth, selectTrack);
 
 export default router;

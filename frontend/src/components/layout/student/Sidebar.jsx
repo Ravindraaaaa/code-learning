@@ -162,6 +162,17 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
               </div>
             </div>
 
+            {user?.role === 'admin' && (
+              <Link
+                to={ROUTES.ADMIN}
+                className="flex items-center justify-center gap-1.5 w-full py-1.5 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-semibold transition-colors shadow-surface-sm"
+                title="Go to Administrator Console"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Admin Console</span>
+              </Link>
+            )}
+
             <div className="flex items-center justify-between gap-2 pt-1">
               <Link
                 to={ROUTES.HOME}

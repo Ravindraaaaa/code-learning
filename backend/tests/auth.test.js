@@ -9,7 +9,7 @@ import { requireAdmin } from '../src/middleware/adminMiddleware.js';
 import { isDBConnected } from '../src/config/db.js';
 import { registerStudent, loginStudent, loginAdmin, getStudentProfile, getUserProfile } from '../src/services/authService.js';
 import { getStudentDashboardData } from '../src/services/dashboardService.js';
-import { User, Language } from '../src/models/index.js';
+import { User, Language, Track } from '../src/models/index.js';
 import {
   DEFAULT_LANGUAGES,
   getAllLanguages,
@@ -17,6 +17,13 @@ import {
   selectStudentLanguage,
   getStudentSelectedLanguage,
 } from '../src/services/languageService.js';
+import {
+  DEFAULT_TRACKS,
+  getAllTracks,
+  getTrackBySlug,
+  selectStudentTrack,
+  getStudentSelectedTrack,
+} from '../src/services/trackService.js';
 
 
 
@@ -1418,6 +1425,233 @@ describe('Student Authentication Comprehensive Test Suite', () => {
         await assert.rejects(
           async () => {
             await selectStudentLanguage(studentUserId, 'javascript');
+          },
+          (err) => {
+            assert.equal(err.statusCode, 503);
+            return true;
+          }
+        );
+      }
+    });
+  });
+
+  // =========================================================================
+  // 11. LEARNING TRACKS (WEB DEVELOPMENT: HTML, CSS, JS, REACT, NODE, MONGODB) & ENROLLMENT
+  // =========================================================================
+  describe('11. Learning Tracks (Web Development) & Student Enrollment', () => {
+    let origFind;
+    let origFindOne;
+    let origCountDocuments;
+    let origFindById;
+    const testTracksDB = new Map();
+    const testUsersDB = new Map();
+
+    const studentUserId = new mongoose.Types.ObjectId();
+
+    before(() => {
+      origFind = Track.find;
+      origFindOne = Track.findOne;
+      origCountDocuments = Track.countDocuments;
+      origFindById = User.findById;
+
+      for (const track of DEFAULT_TRACKS) {
+        testTracksDB.set(track.slug, {
+          ...track,
+          _id: new mongoose.Types.ObjectId(),
+        });
+      }
+
+      testUsersDB.set(studentUserId.toString(), {
+        _id: studentUserId,
+        name: 'Full Stack Student',
+        email: 'webdev.student@codeforge.dev',
+        role: 'student',
+        roadmap: null,
+        recentActivity: [],
+        save: async function () {
+          testUsersDB.set(this._id.toString(), this);
+          return this;
+        },
+      });
+
+      Track.countDocuments = async () => testTracksDB.size;
+
+      Track.find = (query = {}) => {
+        const list = Array.from(testTracksDB.values()).filter((t) => {
+          if (query.isActive !== undefined) return t.isActive === query.isActive;
+          return true;
+        });
+        return {
+          sort: () => list.sort((a, b) => a.displayOrder - b.displayOrder),
+        };
+      };
+
+      Track.findOne = async (query = {}) => {
+        if (query.slug) {
+          return testTracksDB.get(query.slug) || null;
+        }
+        return null;
+      };
+
+      User.findById = async (id) => {
+        const user = testUsersDB.get(id.toString());
+        return user || null;
+      };
+    });
+
+    after(() => {
+      Track.find = origFind;
+      Track.findOne = origFindOne;
+      Track.countDocuments = origCountDocuments;
+      User.findById = origFindById;
+      testTracksDB.clear();
+      testUsersDB.clear();
+    });
+
+    const runWithSimulatedConnection = async (fn) => {
+      const origReadyState = mongoose.connection.readyState;
+      Object.defineProperty(mongoose.connection, 'readyState', { value: 1, configurable: true });
+      try {
+        return await fn();
+      } finally {
+        Object.defineProperty(mongoose.connection, 'readyState', { value: origReadyState, configurable: true });
+      }
+    };
+
+    test('Canonical platform tracks contains Web Development with HTML, CSS, JavaScript, React, Node.js, and MongoDB', () => {
+      const webDevTrack = DEFAULT_TRACKS.find((t) => t.slug === 'web-development');
+      assert.ok(webDevTrack, 'Web Development track must exist in canonical tracks');
+      assert.equal(webDevTrack.name, 'Web Development');
+      assert.equal(webDevTrack.modules.length, 6, 'Web Development track must contain exactly 6 modules');
+
+      const moduleNames = webDevTrack.modules.map((m) => m.name);
+      assert.deepEqual(moduleNames, ['HTML', 'CSS', 'JavaScript', 'React', 'Node.js', 'MongoDB']);
+
+      for (const mod of webDevTrack.modules) {
+        assert.ok(mod.name, 'Module must have name');
+        assert.ok(mod.slug, 'Module must have slug');
+        assert.ok(mod.order, 'Module must have order');
+        assert.ok(mod.description, 'Module must have description');
+        assert.ok(mod.level, 'Module must have level');
+        assert.ok(mod.topicsCount > 0, 'Module must have topics count');
+      }
+    });
+
+    test('Track schema validates required fields properly', () => {
+      const invalidTrack = new Track({});
+      const err = invalidTrack.validateSync();
+      assert.ok(err);
+      assert.ok(err.errors['name']);
+      assert.ok(err.errors['slug']);
+      assert.ok(err.errors['description']);
+    });
+
+    test('getAllTracks retrieves all active learning tracks', async () => {
+      await runWithSimulatedConnection(async () => {
+        const tracks = await getAllTracks();
+        assert.ok(tracks.length >= 1);
+        const webDev = tracks.find((t) => t.slug === 'web-development');
+        assert.ok(webDev);
+        assert.equal(webDev.name, 'Web Development');
+        assert.equal(webDev.modules.length, 6);
+      });
+    });
+
+    test('getTrackBySlug accurately resolves Web Development track metadata and modules', async () => {
+      await runWithSimulatedConnection(async () => {
+        const track = await getTrackBySlug('web-development');
+        assert.ok(track);
+        assert.equal(track.name, 'Web Development');
+        assert.equal(track.category, 'Full-Stack Development');
+        assert.equal(track.modules.length, 6);
+        assert.equal(track.modules[0].name, 'HTML');
+        assert.equal(track.modules[1].name, 'CSS');
+        assert.equal(track.modules[2].name, 'JavaScript');
+        assert.equal(track.modules[3].name, 'React');
+        assert.equal(track.modules[4].name, 'Node.js');
+        assert.equal(track.modules[5].name, 'MongoDB');
+      });
+    });
+
+    test('Student initially has no enrolled track', async () => {
+      await runWithSimulatedConnection(async () => {
+        const status = await getStudentSelectedTrack(studentUserId);
+        assert.equal(status.enrolled, false);
+        assert.equal(status.roadmap, null);
+      });
+    });
+
+    test('Student can enroll in Web Development Track', async () => {
+      await runWithSimulatedConnection(async () => {
+        const result = await selectStudentTrack(studentUserId, 'web-development');
+        assert.ok(result);
+        assert.ok(result.roadmap);
+        assert.equal(result.roadmap.enrolled, true);
+        assert.equal(result.roadmap.title, 'Web Development');
+        assert.equal(result.roadmap.trackId, 'web-development');
+        assert.equal(result.roadmap.currentModule, 'HTML');
+        assert.equal(result.roadmap.completedModules, 0);
+        assert.equal(result.roadmap.totalModules, 6);
+
+        // Verify persisted in user record
+        const user = testUsersDB.get(studentUserId.toString());
+        assert.ok(user.roadmap.enrolled);
+        assert.ok(user.recentActivity.some((a) => a.title.includes('Web Development')));
+
+        // Verify getStudentSelectedTrack reflects enrollment
+        const current = await getStudentSelectedTrack(studentUserId);
+        assert.equal(current.enrolled, true);
+        assert.equal(current.roadmap.title, 'Web Development');
+        assert.equal(current.track.name, 'Web Development');
+      });
+    });
+
+    test('selectStudentTrack rejects unsupported track with 400 Bad Request', async () => {
+      await runWithSimulatedConnection(async () => {
+        await assert.rejects(
+          async () => {
+            await selectStudentTrack(studentUserId, 'quantum-computing');
+          },
+          (err) => {
+            assert.equal(err.statusCode, 400);
+            assert.match(err.message, /Unsupported learning track/i);
+            return true;
+          }
+        );
+      });
+    });
+
+    test('selectStudentTrack throws 404 for non-existent student', async () => {
+      await runWithSimulatedConnection(async () => {
+        const fakeUserId = new mongoose.Types.ObjectId();
+        await assert.rejects(
+          async () => {
+            await selectStudentTrack(fakeUserId, 'web-development');
+          },
+          (err) => {
+            assert.equal(err.statusCode, 404);
+            assert.match(err.message, /Student account not found/i);
+            return true;
+          }
+        );
+      });
+    });
+
+    test('Track endpoints throw 503 when database is disconnected', async () => {
+      if (!isDBConnected()) {
+        await assert.rejects(
+          async () => {
+            await getAllTracks();
+          },
+          (err) => {
+            assert.equal(err.statusCode, 503);
+            return true;
+          }
+        );
+
+        await assert.rejects(
+          async () => {
+            await selectStudentTrack(studentUserId, 'web-development');
           },
           (err) => {
             assert.equal(err.statusCode, 503);

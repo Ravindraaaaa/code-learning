@@ -26,6 +26,7 @@ import { Button } from '../components/common/Button.jsx';
 import { EmptyState } from '../components/common/EmptyState.jsx';
 import { Skeleton } from '../components/common/Skeleton.jsx';
 import { LanguageSelectorModal } from '../components/language/LanguageSelectorModal.jsx';
+import { TrackSelectorModal } from '../components/track/TrackSelectorModal.jsx';
 import { ROUTES } from '../routes/paths.js';
 
 export const Dashboard = () => {
@@ -37,6 +38,7 @@ export const Dashboard = () => {
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLangModalOpen, setIsLangModalOpen] = useState(false);
+  const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
 
   const fetchDashboard = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
@@ -286,15 +288,34 @@ export const Dashboard = () => {
               subtitle="Enrolled algorithmic track and structured curriculum trajectory"
               action={
                 roadmap ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsTrackModalOpen(true)}
+                      className="text-xs text-content-muted"
+                    >
+                      <span>Switch Track</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(ROUTES.LEARN)}
+                    >
+                      <span>Track View</span>
+                      <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    </Button>
+                  </div>
+                ) : (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(ROUTES.LEARN)}
+                    onClick={() => setIsTrackModalOpen(true)}
                   >
-                    <span>Track View</span>
-                    <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    <Compass className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                    <span>Choose Track</span>
                   </Button>
-                ) : null
+                )
               }
             />
 
@@ -346,7 +367,7 @@ export const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 flex flex-wrap gap-2.5">
                   <Button
                     variant="primary"
                     size="sm"
@@ -356,6 +377,14 @@ export const Dashboard = () => {
                     <span>Resume {roadmap.currentModule}</span>
                     <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsTrackModalOpen(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    <span>Change Track</span>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -364,7 +393,7 @@ export const Dashboard = () => {
                 title="No active roadmap enrolled"
                 description="Enroll in a structured algorithmic curriculum to unlock step-by-step topic milestones, interactive tutorials, and code challenges."
                 actionLabel="Browse Learning Tracks"
-                onAction={() => navigate(ROUTES.LEARN)}
+                onAction={() => setIsTrackModalOpen(true)}
               />
             )}
           </Card>
@@ -668,6 +697,13 @@ export const Dashboard = () => {
         onClose={() => setIsLangModalOpen(false)}
         currentLanguageSlug={student?.selectedLanguage}
         onLanguageSelected={() => fetchDashboard(true)}
+      />
+
+      <TrackSelectorModal
+        isOpen={isTrackModalOpen}
+        onClose={() => setIsTrackModalOpen(false)}
+        currentTrackId={roadmap?.trackId}
+        onTrackSelected={() => fetchDashboard(true)}
       />
     </div>
   );

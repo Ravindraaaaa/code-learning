@@ -2,8 +2,16 @@ import mongoose from 'mongoose';
 import { config } from './env.js';
 import { logger } from '../utils/logger.js';
 
+let fallbackActive = false;
+
+export const setFallbackActive = (active) => {
+  fallbackActive = active;
+};
+
+export const isDevFallbackActive = () => fallbackActive;
+
 export const isDBConnected = () => {
-  return mongoose.connection.readyState === 1;
+  return mongoose.connection.readyState === 1 || fallbackActive;
 };
 
 export const connectDB = async () => {

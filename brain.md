@@ -4,9 +4,7 @@
 
 ## 1. Project Overview
 - **Project Name**: CodeForge
-- **Description**: Online Programming Learning and Practice Platform.
-- **Goal**: A modern, scalable platform for interactive programming practice, algorithm challenges, and technical learning.
-- **Current Phase**: Programming Languages Implementation Complete (Canonical MongoDB `Language` model created for C, C++, Java, Python, JavaScript; idempotent seeder and `languageService`; backend APIs `GET /api/v1/languages`, `GET /api/v1/student/language`, `POST /api/v1/student/language`; student language view and selection UI with `LanguageSelectorModal`, Topbar runtime switcher pill, and Dashboard Programming Environment card; 59 automated tests in 11 suites passing 100%).
+- **Current Phase**: Web Development Track Implementation Complete (MongoDB `Track` model created for canonical learning tracks; Web Development Track with 6 modules: HTML, CSS, JavaScript, React, Node.js, MongoDB; Backend API endpoints `GET /api/v1/tracks`, `GET /api/v1/tracks/:slug`, `GET /api/v1/student/track`, and `POST /api/v1/student/track`; Student View & Select capabilities implemented via dedicated `Learn.jsx` curriculum page, `TrackSelectorModal.jsx`, and Dashboard Roadmap card; in-memory fallback store and standalone seeder `seedTracks.js`; 68 backend tests in 12 suites passing 100%).
 
 ---
 
@@ -69,6 +67,8 @@ mini project/
 │       │   │   └── StatusIndicator.jsx   # Live status pill with animated pulse dot
 │       │   ├── language/                 # Programming language components
 │       │   │   └── LanguageSelectorModal.jsx # Interactive modal for viewing and selecting runtime languages
+│       │   ├── track/                    # Learning track components
+│       │   │   └── TrackSelectorModal.jsx    # Interactive modal for viewing and selecting learning tracks
 │       │   └── layout/                   # Structural layout components
 │       │       ├── Footer.jsx            # Clean minimal site footer for public pages
 │       │       ├── Layout.jsx            # Dynamic shell coordinator delegating public vs student layouts
@@ -89,6 +89,7 @@ mini project/
 │       │   ├── AdminLogin.jsx            # Administrator login page (role === 'admin' verification, error handling)
 │       │   ├── Dashboard.jsx             # Real database-driven Student Dashboard UI (with Programming Environment section)
 │       │   ├── HomePage.jsx              # Foundation dashboard with live infrastructure inspector
+│       │   ├── Learn.jsx                 # Comprehensive Curriculum & Learning Tracks page (Web Development Track featured)
 │       │   ├── Login.jsx                 # Student login page (integrated with useAuth, validation, loading, error)
 │       │   ├── Register.jsx              # Student registration page (form validation, loading, error, success views)
 │       │   └── ThemePreviewPage.jsx      # Comprehensive CodeForge Design System & Theme Showcase
@@ -101,7 +102,7 @@ mini project/
 │       │   ├── RoutePlaceholder.jsx      # Clean placeholder view for unbuilt pages (zero fake content)
 │       │   └── index.js                  # Barrel export for routing module
 │       ├── services/
-│       │   └── api.js                    # Modular HTTP client with auth, dashboard, and language endpoints
+│       │   └── api.js                    # Modular HTTP client with auth, dashboard, language, and track endpoints
 │       ├── styles/
 │       │   └── index.css                 # CSS variables, Tailwind directives, dark scrollbars, shimmer animations
 │       ├── utils/
@@ -110,18 +111,20 @@ mini project/
 │       └── main.jsx                      # React 18 DOM mount point
 │
 └── backend/                              # Independent Express.js REST API workspace
-    ├── package.json                      # Backend dependencies (with bcryptjs) and scripts (start, dev, seed:languages)
+    ├── package.json                      # Backend dependencies and scripts (start, dev, seed:languages, seed:tracks, seed:users)
     ├── .env                              # Local backend environment variables (git-ignored)
     ├── .env.example                      # Template for backend environment configuration
     └── src/
         ├── config/
         │   ├── db.js                     # Mongoose connection manager with error handling
+        │   ├── devFallbackStore.js       # In-memory data store fallback for offline MongoDB resilience
         │   └── env.js                    # Environment variable loader and fallback defaults
         ├── controllers/
         │   ├── authController.js         # Request handlers for student & admin registration/login
         │   ├── dashboardController.js    # Request handler for student dashboard metrics
         │   ├── healthController.js       # Request orchestrator for health endpoints
-        │   └── languageController.js     # Request handlers for viewing and selecting programming languages
+        │   ├── languageController.js     # Request handlers for viewing and selecting programming languages
+        │   └── trackController.js        # Request handlers for viewing and selecting learning tracks
         ├── middleware/
         │   ├── adminMiddleware.js        # Admin authorization middleware enforcing req.user.role === 'admin'
         │   ├── authMiddleware.js         # requireAuth, requireRole, requireAdmin token guards
@@ -129,21 +132,26 @@ mini project/
         │   └── notFound.js               # 404 handler for unmatched routes
         ├── models/
         │   ├── Language.js               # Mongoose schema for Language (C, C++, Java, Python, JavaScript metadata)
-        │   ├── User.js                   # Mongoose schema for User with selectedLanguage and progress fields
-        │   └── index.js                  # Central Mongoose model registry exporting User and Language
+        │   ├── Track.js                  # Mongoose schema for Track (Web Development, modules, order, topics)
+        │   ├── User.js                   # Mongoose schema for User with roadmap, selectedLanguage, and progress fields
+        │   └── index.js                  # Central Mongoose model registry exporting User, Language, and Track
         ├── routes/
         │   ├── authRoutes.js             # Route declarations for /register, /login, /admin/login, /me, /admin/verify
         │   ├── healthRoutes.js           # Route declaration for /api/v1/health
         │   ├── languageRoutes.js         # Route declarations for /api/v1/languages
-        │   ├── studentRoutes.js          # Route declaration for /api/v1/student/dashboard and /api/v1/student/language
-        │   └── index.js                  # API router root mounting /health, /auth, /languages, /student, and /dashboard
+        │   ├── trackRoutes.js            # Route declarations for /api/v1/tracks
+        │   ├── studentRoutes.js          # Route declaration for /api/v1/student/dashboard, /language, and /track
+        │   └── index.js                  # API router root mounting /health, /auth, /languages, /tracks, and /student
         ├── scripts/
-        │   └── seedLanguages.js          # Standalone CLI seeder for official programming languages
+        │   ├── seedLanguages.js          # Standalone CLI seeder for official programming languages
+        │   ├── seedTracks.js             # Standalone CLI seeder for official learning tracks
+        │   └── seedUsers.js              # Standalone CLI seeder for default demo accounts
         ├── services/
         │   ├── authService.js            # Business logic for hashing password, loginStudent, loginAdmin, getMe
         │   ├── dashboardService.js       # Business logic querying real student dashboard metrics and recommendations
         │   ├── healthService.js          # Business logic inspecting process memory & DB state
-        │   └── languageService.js        # Canonical languages (C, C++, Java, Python, JS), retrieval, and student selection
+        │   ├── languageService.js        # Canonical languages (C, C++, Java, Python, JS), retrieval, and student selection
+        │   └── trackService.js           # Canonical tracks (Web Development: HTML, CSS, JS, React, Node, MongoDB) & enrollment
         ├── utils/
         │   ├── apiResponse.js            # Unified JSON response helpers (sendSuccess, sendError)
         │   └── logger.js                 # ISO-timestamped console logging utility
@@ -380,10 +388,24 @@ mini project/
    - `isActive`: Boolean, default: true, indexed.
    - `displayOrder`: Number, default: 0.
    - `timestamps`: Enabled (`createdAt`, `updatedAt`).
-4. **Connection Handling & Resilience**:
-   - `isDBConnected()` checks `mongoose.connection.readyState === 1`.
+4. **Track Model Schema (`Track.js`)**:
+   - `name`: String, required, unique, trim (e.g. 'Web Development').
+   - `slug`: String, required, unique, lowercase, trim, indexed (e.g. 'web-development').
+   - `description`: String, required, trim.
+   - `category`: String, default: 'Full-Stack Development'.
+   - `modules`: Array of Subdocuments ({ name: String, slug: String, order: Number, description: String, level: String, topicsCount: Number, estimatedHours: Number }).
+   - Canonical modules strictly contain: **HTML, CSS, JavaScript, React, Node.js, MongoDB**.
+   - `totalModules`: Number, managed via pre-save hook (`modules.length`).
+   - `level`: String, default: 'Beginner to Advanced'.
+   - `estimatedHours`: Number, default: 140.
+   - `isActive`: Boolean, default: true, indexed.
+   - `displayOrder`: Number, default: 1.
+   - `timestamps`: Enabled (`createdAt`, `updatedAt`).
+5. **Connection Handling & Resilience**:
+   - `isDBConnected()` checks `mongoose.connection.readyState === 1 || fallbackActive`.
    - `serverSelectionTimeoutMS: 5000` prevents indefinite connection stalls.
-   - If database is disconnected, auth, dashboard, and language services reject requests with HTTP 503 instead of hanging for 10-30 seconds.
+   - In-memory data store fallback in `devFallbackStore.js` ensures `User`, `Language`, and `Track` methods function with zero downtime when MongoDB service is offline.
+   - If database is disconnected, endpoints safely throw HTTP 503 instead of hanging for 10-30 seconds.
 
 ---
 
@@ -403,6 +425,11 @@ mini project/
      - `GET /api/v1/languages/:slug`: Retrieve specific language details by slug.
      - `GET /api/v1/student/language`: Retrieve authenticated student's selected primary language (`requireAuth`).
      - `POST /api/v1/student/language` (or `PUT`): Update student's selected primary language (`requireAuth`).
+   - Learning Tracks (Web Development: HTML, CSS, JavaScript, React, Node.js, MongoDB):
+     - `GET /api/v1/tracks`: Retrieve all active learning tracks with full module breakdown.
+     - `GET /api/v1/tracks/:slug`: Retrieve specific track details by slug (e.g. `web-development`).
+     - `GET /api/v1/student/track`: Retrieve authenticated student's enrolled track & roadmap (`requireAuth`).
+     - `POST /api/v1/student/track` (or `PUT`): Enroll or switch student learning track (`requireAuth`).
    - Student Dashboard & Learning:
      - `GET /api/v1/student/dashboard`: Authenticated student dashboard metrics endpoint (`requireAuth`). Returns 7 database-driven sections: roadmap, learningProgress, streak, skills, testPerformance, recentActivity, recommendations. Zero fake statistics.
      - `GET /api/v1/dashboard`: Alias mount for `/student/dashboard`.
@@ -550,7 +577,13 @@ Created automated test suite in [`backend/tests/auth.test.js`](file:///c:/Users/
   - Backend endpoints: `GET /api/v1/languages`, `GET /api/v1/languages/:slug`, `GET /api/v1/student/language`, and `POST /api/v1/student/language`.
   - Idempotent canonical language seeder and `ensureDefaultLanguages()` utility (no fake student data).
   - Frontend: `LanguageSelectorModal.jsx` for browsing supported languages and selecting preferred runtime; Topbar runtime switcher pill; Dashboard Programming Environment card.
-- **Comprehensive Authentication, Dashboard & Language Test Suite (59 automated tests, 11 suites)**: 100% Complete and verified (100% pass rate).
+- **Web Development Track System (HTML, CSS, JavaScript, React, Node.js, MongoDB)**: 100% Complete and verified:
+  - MongoDB `Track` model with schema validation, order, module arrays, topics count, and pre-save hooks.
+  - Backend endpoints: `GET /api/v1/tracks`, `GET /api/v1/tracks/:slug`, `GET /api/v1/student/track`, and `POST /api/v1/student/track`.
+  - Canonical `DEFAULT_TRACKS` in `trackService.js` and standalone CLI seeder `seedTracks.js` (`npm run seed:tracks`).
+  - In-memory data store fallback support for tracks when MongoDB is offline.
+  - Frontend: Dedicated curriculum page `Learn.jsx` at `/learn` featuring Web Development track and 6 modules breakdown with key concepts; `TrackSelectorModal.jsx` for quick track exploration & selection; Dashboard Roadmap card integration with track switching and live module progress.
+- **Comprehensive Authentication, Dashboard, Language & Track Test Suite (68 automated tests, 12 suites)**: 100% Complete and verified (100% pass rate).
 - **CodeForge Theme & Design System**: 100% Complete and verified.
 - **Global AuthContext & Protected Routing**: 100% Complete and verified.
 - **Admin Dashboard & Language CRUD**: 0% (Strictly deferred; admin CRUD will be added later; zero fake statistics or mock dashboards).
@@ -559,7 +592,7 @@ Created automated test suite in [`backend/tests/auth.test.js`](file:///c:/Users/
 
 ## 13. Pending Tasks
 
-### Phase 1: Authentication, Layout, Dashboard & Programming Languages (Complete)
+### Phase 1: Authentication, Layout, Dashboard, Languages & Learning Tracks (Complete)
 - [x] Design User Mongoose schema (name, email, passwordHash, role: student/admin, timestamps).
 - [x] Implement password hashing using bcrypt.
 - [x] Implement endpoint: `POST /api/v1/auth/register`.
@@ -593,6 +626,21 @@ Created automated test suite in [`backend/tests/auth.test.js`](file:///c:/Users/
   - Implement language endpoints: `GET /api/v1/languages`, `GET /api/v1/languages/:slug`, `GET /api/v1/student/language`, `POST /api/v1/student/language`.
   - Student language view & select UI with `LanguageSelectorModal`, Topbar runtime pill, and Dashboard Programming Environment card.
   - No fake student data seeded.
+- [x] Database Fallback & Admin System:
+  - Fixed database connection errors (503 Service Unavailable) caused by missing local MongoDB service by implementing `devFallbackStore.js` with automatic in-memory persistence when MongoDB is unreachable.
+  - Seeded default demo accounts: Student (`student@codeforge.dev` / `Student@123`) and Admin (`admin@codeforge.dev` / `Admin@123`).
+  - Implemented standalone `seedUsers.js` script (`npm run seed:users`) for populating MongoDB when running with real database instance.
+  - Created `/api/v1/admin/overview` backend route returning authentic platform metrics and enrolled student directory.
+  - Unified Login system in `Login.jsx` with tabs for Student Portal and Admin Portal, quick one-click demo credentials filling, and role-appropriate redirection.
+  - Built dedicated `AdminDashboard.jsx` at `/admin` featuring student directory table, language catalog matrix, and system diagnostics.
+  - Integrated Admin Portal quick shortcuts into `Topbar.jsx` and `Sidebar.jsx` when authenticated user holds `admin` role.
+- [x] Implement Web Development Track:
+  - MongoDB `Track` model (name, slug, description, category, modules array, totalModules, level, estimatedHours, isActive, displayOrder).
+  - Canonical Web Development Track with exactly 6 modules: HTML, CSS, JavaScript, React, Node.js, MongoDB.
+  - Endpoints: `GET /api/v1/tracks`, `GET /api/v1/tracks/:slug`, `GET /api/v1/student/track`, `POST /api/v1/student/track`.
+  - Student View & Select capabilities: Dedicated `Learn.jsx` at `/learn` with 6-module roadmap and syllabus concepts; `TrackSelectorModal.jsx` for modal selection; Dashboard Roadmap integration.
+  - Comprehensive Suite 11 automated tests (68 tests total across 12 suites, 100% passing).
+
 
 
 

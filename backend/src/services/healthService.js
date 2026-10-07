@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
+import { isDevFallbackActive } from '../config/db.js';
 
 const getDatabaseStatus = () => {
+  if (isDevFallbackActive()) {
+    return 'connected (in-memory mode)';
+  }
+
   const states = {
     0: 'disconnected',
     1: 'connected',

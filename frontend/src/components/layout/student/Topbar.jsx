@@ -9,6 +9,7 @@ import {
   ChevronRight,
   User as UserIcon,
   Code2,
+  Shield,
 } from 'lucide-react';
 import { ALL_STUDENT_NAV_ITEMS } from './studentNavConfig.js';
 import { ROUTES } from '../../../routes/paths.js';
@@ -150,6 +151,18 @@ export const Topbar = ({ onOpenMobileNav }) => {
           <Sparkles className="w-3.5 h-3.5 text-violet-500" />
           <span className="hidden md:inline font-mono">AI Mentor</span>
         </Link>
+
+        {/* Administrator Portal Quick Access */}
+        {user?.role === 'admin' && (
+          <Link
+            to={ROUTES.ADMIN}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all shadow-surface-sm"
+            title="Administrator Portal"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Admin Portal</span>
+          </Link>
+        )}
 
         {/* Notification Bell */}
         <button

@@ -103,3 +103,35 @@ export const selectStudentLanguage = async (languageSlug) => {
   });
 };
 
+export const getAdminOverview = async () => {
+  return request('/admin/overview', {
+    method: 'GET',
+  });
+};
+
+export const getTracks = async () => {
+  return request('/tracks', {
+    method: 'GET',
+  });
+};
+
+export const getTrackDetails = async (slug) => {
+  return request(`/tracks/${slug}`, {
+    method: 'GET',
+  });
+};
+
+export const getStudentTrack = async () => {
+  return request('/student/track', {
+    method: 'GET',
+  });
+};
+
+export const selectStudentTrack = async (trackSlug) => {
+  return request('/student/track', {
+    method: 'POST',
+    body: JSON.stringify({ trackSlug }),
+  });
+};
+
+

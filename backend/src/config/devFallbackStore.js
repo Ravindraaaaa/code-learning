@@ -2,12 +2,33 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { DEFAULT_LANGUAGES } from '../services/languageService.js';
 import { DEFAULT_TRACKS } from '../services/trackService.js';
+import { DEFAULT_BATCHES } from '../services/batchService.js';
 import { logger } from '../utils/logger.js';
 
 let fallbackActive = false;
 const inMemoryUsers = new Map();
 const inMemoryLanguages = new Map();
 const inMemoryTracks = new Map();
+const inMemoryBatches = new Map();
+
+const createMockBatchDoc = (data) => {
+  const doc = {
+    _id: data._id || new mongoose.Types.ObjectId(),
+    name: data.name,
+    description: data.description || '',
+    features: data.features || [],
+    price: data.price !== undefined ? Number(data.price) : 49,
+    currency: data.currency || '₹',
+    status: data.status || 'active',
+    createdAt: data.createdAt || new Date(),
+    updatedAt: new Date(),
+  };
+  doc.toJSON = function () {
+    return { ...this };
+  };
+  return doc;
+};
+
 
 // Helper to create safe user object with toJSON and save
 const createMockUserDoc = (data) => {
@@ -74,7 +95,7 @@ export const isDevFallbackActive = () => fallbackActive;
  * Initializes and patches Mongoose models to fall back seamlessly
  * to an in-memory data store when local MongoDB is unavailable.
  */
-export const activateDevFallbackStore = async (User, Language, Track) => {
+export const activateDevFallbackStore = async (User, Language, Track, Batch) => {
   if (fallbackActive) return;
   fallbackActive = true;
 
@@ -293,7 +314,106 @@ export const activateDevFallbackStore = async (User, Language, Track) => {
     };
   }
 
+  // 6. Patch Batch model methods if Batch is provided
+  if (Batch) {
+    for (const batch of DEFAULT_BATCHES) {
+      inMemoryBatches.set(String(batch._id), createMockBatchDoc(batch));
+    }
+
+    const origBatchFind = Batch.find;
+    Batch.find = function (query = {}, ...args) {
+      if (mongoose.connection.readyState === 1) {
+        return origBatchFind.call(Batch, query, ...args);
+      }
+
+      let results = Array.from(inMemoryBatches.values()).map(createMockBatchDoc);
+      if (query.status) {
+        results = results.filter((b) => b.status === query.status);
+      }
+
+      const chain = {
+        sort: () => chain,
+        exec: () => Promise.resolve(results),
+        then: (resolve, reject) => Promise.resolve(results).then(resolve, reject),
+        catch: (reject) => Promise.resolve(results).catch(reject),
+      };
+      return chain;
+    };
+
+    const origBatchFindById = Batch.findById;
+    Batch.findById = function (id, ...args) {
+      if (mongoose.connection.readyState === 1) {
+        return origBatchFindById.call(Batch, id, ...args);
+      }
+
+      const idStr = String(id);
+      const b = inMemoryBatches.get(idStr);
+      return Promise.resolve(b ? createMockBatchDoc(b) : null);
+    };
+
+    const origBatchCount = Batch.countDocuments;
+    Batch.countDocuments = function (...args) {
+      if (mongoose.connection.readyState === 1) {
+        return origBatchCount.call(Batch, ...args);
+      }
+      return Promise.resolve(inMemoryBatches.size);
+    };
+
+    const origBatchCreate = Batch.create;
+    Batch.create = function (data, ...args) {
+      if (mongoose.connection.readyState === 1) {
+        return origBatchCreate.call(Batch, data, ...args);
+      }
+
+      const doc = createMockBatchDoc(data);
+      inMemoryBatches.set(String(doc._id), doc);
+      return Promise.resolve(doc);
+    };
+
+    const origBatchFindByIdAndUpdate = Batch.findByIdAndUpdate;
+    Batch.findByIdAndUpdate = function (id, update, options, ...args) {
+      if (mongoose.connection.readyState === 1) {
+        return origBatchFindByIdAndUpdate.call(Batch, id, update, options, ...args);
+      }
+
+      const idStr = String(id);
+      let b = inMemoryBatches.get(idStr);
+      if (b) {
+        Object.assign(b, update, { updatedAt: new Date() });
+        inMemoryBatches.set(idStr, b);
+      }
+      return Promise.resolve(b ? createMockBatchDoc(b) : null);
+    };
+
+    const origBatchFindByIdAndDelete = Batch.findByIdAndDelete;
+    Batch.findByIdAndDelete = function (id, ...args) {
+      if (mongoose.connection.readyState === 1) {
+        return origBatchFindByIdAndDelete.call(Batch, id, ...args);
+      }
+
+      const idStr = String(id);
+      const b = inMemoryBatches.get(idStr);
+      inMemoryBatches.delete(idStr);
+      return Promise.resolve(b ? createMockBatchDoc(b) : null);
+    };
+
+    const origBatchInsertMany = Batch.insertMany;
+    Batch.insertMany = function (docs, ...args) {
+      if (mongoose.connection.readyState === 1) {
+        return origBatchInsertMany.call(Batch, docs, ...args);
+      }
+
+      const created = docs.map((d) => {
+        const doc = createMockBatchDoc(d);
+        inMemoryBatches.set(String(doc._id), doc);
+        return doc;
+      });
+      return Promise.resolve(created);
+    };
+  }
+
   logger.info('[DevFallbackStore] In-Memory Data Store active with default accounts:');
   logger.info('  -> Student: student@codeforge.dev / Student@123');
   logger.info('  -> Admin:   admin@codeforge.dev   / Admin@123');
 };
+

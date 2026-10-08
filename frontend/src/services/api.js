@@ -134,4 +134,53 @@ export const selectStudentTrack = async (trackSlug) => {
   });
 };
 
+export const getBatches = async () => {
+  return request('/batches', {
+    method: 'GET',
+  });
+};
+
+export const createBatch = async (batchData) => {
+  return request('/batches', {
+    method: 'POST',
+    body: JSON.stringify(batchData),
+  });
+};
+
+export const updateBatch = async (id, batchData) => {
+  return request(`/batches/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(batchData),
+  });
+};
+
+export const deleteBatch = async (id) => {
+  return request(`/batches/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+const api = {
+  get: async (endpoint, options = {}) => {
+    const data = await request(endpoint, { ...options, method: 'GET' });
+    return { data };
+  },
+  post: async (endpoint, payload, options = {}) => {
+    const data = await request(endpoint, { ...options, method: 'POST', body: JSON.stringify(payload) });
+    return { data };
+  },
+  put: async (endpoint, payload, options = {}) => {
+    const data = await request(endpoint, { ...options, method: 'PUT', body: JSON.stringify(payload) });
+    return { data };
+  },
+  delete: async (endpoint, options = {}) => {
+    const data = await request(endpoint, { ...options, method: 'DELETE' });
+    return { data };
+  }
+};
+
+export default api;
+
+
+
 

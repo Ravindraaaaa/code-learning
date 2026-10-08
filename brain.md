@@ -322,8 +322,22 @@ mini project/
   - Extended [`paths.js`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/frontend/src/routes/paths.js) and [`routeConfig.jsx`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/frontend/src/routes/routeConfig.jsx) registering all 12 student routes under `ProtectedRoute`.
   - Updated [`Layout.jsx`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/frontend/src/components/layout/Layout.jsx) to dynamically delegate between the public marketing shell and the student application workspace.
   - Enhanced [`RoutePlaceholder.jsx`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/frontend/src/routes/RoutePlaceholder.jsx) with route-specific icons and honest developer descriptions, strictly adhering to "No fake statistics".
+- [x] **Topics Feature Backend**: Created MongoDB model, API endpoints, controller, service, and validation for Topics.
+- [x] **Lessons Feature Backend**: Created `Lesson` and `LessonProgress` MongoDB models, APIs for student viewing/completion, and Admin CRUD. Real database progress tracking for lessons.
+- [x] **Knowledge Assessment Backend**: Created `AssessmentQuestion` and `AssessmentSubmission` MongoDB models. Implemented API to fetch questions (masking correct answers) and submit assessments with automatic score, percentage, and level calculation.
+- [x] **Personalized Roadmap Backend**: Created `Roadmap` MongoDB model and APIs (`/api/v1/roadmaps/generate` and `/api/v1/roadmaps/my-roadmap`). Logic constructs paths dynamically using actual Topics and Lessons based on the student's assessed difficulty level (Beginner/Intermediate/Advanced). Added progress tracking hooks to `lessonService`.
+- [x] **Secure Sandbox Execution Architecture**: Fully implemented `CodeExecutionService` using external Piston API for native sandboxing (avoids local execution in Node). Enforces strict limits: 10s compile timeout, 5s run timeout, file-system and network restrictions, process isolation. Implemented discrete execution statuses (`queued`, `running`, `completed`, `compile_error`, `runtime_error`, `timeout`, `failed`).
+- [x] **Debug Arena**: Created `DebugChallenge` and `DebugAttempt` models. Built backend API and frontend `DebugArena.jsx` UI. Students can view faulty code with Syntax, Logical, or Runtime bugs, test fixes in the Monaco editor, and submit against hidden test cases. System evaluates submissions securely and records the score and execution time without revealing the complete solution.
+- [x] **Weekly Tests**: Created `WeeklyTest`, `WeeklyTestQuestion`, and `WeeklyTestResult` models. Handled test fetching and server-side submission validation. Created frontend UI `Tests.jsx` enabling students to browse active tests, answer timed MCQs, and view their final secure percentage and score on a results dashboard.
+- [x] **Competitions Module**: Created `Competition`, `CompetitionQuestion`, and `CompetitionParticipation` models. Built full backend integration with the `CodeExecutionService` sandbox to evaluate competition coding problems against hidden test cases. Implemented `Competitions.jsx` frontend where students can enter live arenas, write code in the Monaco Editor, submit solutions, and accrue real scores dynamically based on test case success.
+- [x] **Global Leaderboard**: Implemented `leaderboardService` and `Leaderboard.jsx` to dynamically aggregate authentic `CompetitionParticipation` records. Ranks students globally across the platform based on raw accumulated scores and unique problems solved, ensuring strict adherence to the "no fake statistics" rule.
+- [x] **Student Progress Tracking**: Implemented `progressService.js` to cross-query actual MongoDB records (`LessonProgress`, `DebugAttempt`, `WeeklyTestResult`, `CompetitionParticipation`, `Roadmap`, and `User.streak`). Built `Progress.jsx` dashboard to visualize authentic learning velocity, bug squashes, test averages, and topic mastery without faking any activity data.
+- [x] **Skill Heatmap**: Created `SkillHeatmap.jsx` to visualize daily coding activity and topic strength using actual MongoDB records spanning the last 90 days. Extracted detailed breakdowns for tests, debug challenges, lessons, and competitions, strictly rendering authentic user data without any faked records.
+- [x] **AI Learning Assistant**: Implemented a simple, rate-limited AI Assistant backend service using `@google/genai` standards with direct fetch to Google Gemini. Features a conversational UI (`AiAssistant.jsx`) that safely keeps the API key hidden on the server, robustly handling missing key scenarios gracefully by explicitly throwing 503 unavailability errors.
+- [x] **Batch/Course Management**: Implemented MongoDB `Batch` model (`name`, `description`, `features`, `price`, `currency`, `status`). Default starting batch seeded with example price ₹49. Built `batchService.js`, `batchController.js`, and `batchRoutes.js` (`GET /api/v1/batches`, `GET /api/v1/batches/:id`, `POST /api/v1/batches`, `PUT /api/v1/batches/:id`, `DELETE /api/v1/batches/:id`). Implemented `Batches.jsx` UI where students can view cohorts and Admins can update current prices & batch details. Fully supported in `devFallbackStore.js` with zero fake purchases.
 
 ---
+
 
 ## 7. Files Changed / Created
 
@@ -340,6 +354,25 @@ mini project/
 - [`backend/src/controllers/authController.js`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/backend/src/controllers/authController.js): Added `adminLogin` controller handler.
 - [`backend/src/routes/authRoutes.js`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/backend/src/routes/authRoutes.js): Added `POST /admin/login` and `GET /admin/verify` routes.
 - [`backend/tests/auth.test.js`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/backend/tests/auth.test.js): Extended with Suite 8 containing 11 tests verifying student vs admin access, role rejections, and authorization middleware (45 tests total).
+- [`backend/src/models/Topic.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/models/Topic.js): Created Topic schema with title, description, track, language, difficulty, order, and status.
+- [`backend/src/validators/topicValidators.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/validators/topicValidators.js): Created topic validation middleware.
+- [`backend/src/services/topicService.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/services/topicService.js): Added topic database operations.
+- [`backend/src/controllers/topicController.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/controllers/topicController.js): Added topic request handlers.
+- [`backend/src/routes/topicRoutes.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/routes/topicRoutes.js): Registered `/api/v1/topics` endpoints.
+- [`backend/src/models/Lesson.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/models/Lesson.js): Created Lesson schema.
+- [`backend/src/models/LessonProgress.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/models/LessonProgress.js): Created schema to track lesson completion without fake progress.
+- [`backend/src/validators/lessonValidators.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/validators/lessonValidators.js): Created lesson validation middleware.
+- [`backend/src/services/lessonService.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/services/lessonService.js): Added lesson database queries and completion marking.
+- [`backend/src/controllers/lessonController.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/controllers/lessonController.js): Added lesson request handlers.
+- [`backend/src/routes/lessonRoutes.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/routes/lessonRoutes.js): Registered `/api/v1/lessons` endpoints.
+- [`backend/src/models/AssessmentQuestion.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/models/AssessmentQuestion.js): Created AssessmentQuestion schema with masked correct options.
+- [`backend/src/models/AssessmentSubmission.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/models/AssessmentSubmission.js): Created AssessmentSubmission schema for tracking user scores and calculated levels.
+- [`backend/src/validators/assessmentValidators.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/validators/assessmentValidators.js): Created assessment validation middleware.
+- [`backend/src/services/assessmentService.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/services/assessmentService.js): Added automatic score and level calculation logic.
+- [`backend/src/controllers/assessmentController.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/controllers/assessmentController.js): Added assessment request handlers.
+- [`backend/src/routes/assessmentRoutes.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/routes/assessmentRoutes.js): Registered `/api/v1/assessments` endpoints.
+- [`backend/src/models/index.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/models/index.js): Exported Topic, Lesson, LessonProgress, AssessmentQuestion, and AssessmentSubmission models.
+- [`backend/src/routes/index.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/routes/index.js): Mounted `/topics`, `/lessons`, and `/assessments` routes.
 
 ### Frontend (`frontend/`)
 - [`frontend/src/components/layout/student/StudentLayout.jsx`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/frontend/src/components/layout/student/StudentLayout.jsx): Created master student workspace shell managing collapse and mobile drawer state.
@@ -401,7 +434,45 @@ mini project/
    - `isActive`: Boolean, default: true, indexed.
    - `displayOrder`: Number, default: 1.
    - `timestamps`: Enabled (`createdAt`, `updatedAt`).
-5. **Connection Handling & Resilience**:
+6. **Topic Model Schema (`Topic.js`)**:
+   - `title`: String, required, trim.
+   - `description`: String, required, trim.
+   - `track`: ObjectId referencing `Track`, default: null.
+   - `language`: ObjectId referencing `Language`, default: null.
+   - `difficulty`: String, enum: `['Beginner', 'Intermediate', 'Advanced']`, default: `'Beginner'`.
+   - `order`: Number, required.
+   - `status`: String, enum: `['draft', 'published']`, default: `'published'`, indexed.
+   - `timestamps`: Enabled (`createdAt`, `updatedAt`).
+7. **Lesson Model Schema (`Lesson.js`)**:
+   - `title`: String, required, trim.
+   - `content`: String, required.
+   - `topic`: ObjectId referencing `Topic`, required.
+   - `difficulty`: String, enum: `['Beginner', 'Intermediate', 'Advanced']`, default: `'Beginner'`.
+   - `estimatedTime`: Number, default: 10 (minutes).
+   - `order`: Number, required.
+   - `status`: String, enum: `['draft', 'published']`, default: `'published'`, indexed.
+   - `timestamps`: Enabled.
+8. **LessonProgress Model Schema (`LessonProgress.js`)**:
+   - `user`: ObjectId referencing `User`, required.
+   - `lesson`: ObjectId referencing `Lesson`, required.
+   - `completedAt`: Date, default `Date.now`.
+   - `index`: Compound unique index on `{ user: 1, lesson: 1 }` to prevent duplicate completions.
+9. **AssessmentQuestion Model Schema (`AssessmentQuestion.js`)**:
+   - `track`: ObjectId referencing `Track`.
+   - `language`: ObjectId referencing `Language`.
+   - `questionText`: String, required.
+   - `options`: Array of Strings (min 2), required.
+   - `correctOptionIndex`: Number, required (masked by `toJSON()` before sending to client).
+   - `difficulty`: String, enum: `['Beginner', 'Intermediate', 'Advanced']`.
+10. **AssessmentSubmission Model Schema (`AssessmentSubmission.js`)**:
+    - `student`: ObjectId referencing `User`, required.
+    - `track`: ObjectId referencing `Track`.
+    - `language`: ObjectId referencing `Language`.
+    - `answers`: Array of subdocuments tracking `question`, `selectedOptionIndex`, and `isCorrect`.
+    - `score`, `totalQuestions`, `percentage`: Numbers.
+    - `level`: String, enum: `['Beginner', 'Intermediate', 'Advanced']`.
+    - `startedAt`, `completedAt`: Dates.
+11. **Connection Handling & Resilience**:
    - `isDBConnected()` checks `mongoose.connection.readyState === 1 || fallbackActive`.
    - `serverSelectionTimeoutMS: 5000` prevents indefinite connection stalls.
    - In-memory data store fallback in `devFallbackStore.js` ensures `User`, `Language`, and `Track` methods function with zero downtime when MongoDB service is offline.
@@ -430,6 +501,19 @@ mini project/
      - `GET /api/v1/tracks/:slug`: Retrieve specific track details by slug (e.g. `web-development`).
      - `GET /api/v1/student/track`: Retrieve authenticated student's enrolled track & roadmap (`requireAuth`).
      - `POST /api/v1/student/track` (or `PUT`): Enroll or switch student learning track (`requireAuth`).
+   - Topics:
+     - `GET /api/v1/topics`: Retrieve all published topics.
+     - `GET /api/v1/topics/:id`: Retrieve specific topic details by ID.
+     - `POST /api/v1/topics`, `PUT /api/v1/topics/:id`, `DELETE /api/v1/topics/:id`: Admin CRUD endpoints (`requireAuth`, `requireAdmin`).
+   - Lessons:
+     - `GET /api/v1/lessons/topic/:topicId`: Retrieve all lessons for a topic.
+     - `GET /api/v1/lessons/:id`: Retrieve lesson details (includes `isCompleted` flag if authenticated).
+     - `POST /api/v1/lessons/:id/complete`: Mark lesson as completed for the authenticated user.
+     - `POST /api/v1/lessons`, `PUT /api/v1/lessons/:id`, `DELETE /api/v1/lessons/:id`: Admin CRUD endpoints.
+   - Knowledge Assessment:
+     - `GET /api/v1/assessments/questions`: Retrieve assessment questions by `track` or `language` ID. Correct answers are strictly masked.
+     - `POST /api/v1/assessments/submit`: Submit answers, calculate percentage, determine level, and store completion.
+     - `POST /api/v1/assessments/questions`, `PUT /api/v1/assessments/questions/:id`, `DELETE /api/v1/assessments/questions/:id`: Admin CRUD for questions.
    - Student Dashboard & Learning:
      - `GET /api/v1/student/dashboard`: Authenticated student dashboard metrics endpoint (`requireAuth`). Returns 7 database-driven sections: roadmap, learningProgress, streak, skills, testPerformance, recentActivity, recommendations. Zero fake statistics.
      - `GET /api/v1/dashboard`: Alias mount for `/student/dashboard`.

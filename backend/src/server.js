@@ -2,7 +2,7 @@ import app from './app.js';
 import { config } from './config/env.js';
 import { connectDB, disconnectDB, setFallbackActive } from './config/db.js';
 import { activateDevFallbackStore } from './config/devFallbackStore.js';
-import { User, Language, Track } from './models/index.js';
+import { User, Language, Track, Batch } from './models/index.js';
 import { logger } from './utils/logger.js';
 
 let server;
@@ -14,9 +14,10 @@ const startServer = async () => {
     } catch (dbError) {
       logger.warn(`Local MongoDB connection failed (${dbError.message}).`);
       logger.info('Activating CodeForge Development In-Memory Store so website works seamlessly without MongoDB.');
-      await activateDevFallbackStore(User, Language, Track);
+      await activateDevFallbackStore(User, Language, Track, Batch);
       setFallbackActive(true);
     }
+
 
     server = app.listen(config.port, () => {
       logger.info(`CodeForge server running in ${config.env} mode on port ${config.port}`);

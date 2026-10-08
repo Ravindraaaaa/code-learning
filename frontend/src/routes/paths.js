@@ -19,6 +19,7 @@ export const ROUTES = {
   COMPETITIONS: '/competitions',
   LEADERBOARD: '/leaderboard',
   PROGRESS: '/progress',
+  SKILL_HEATMAP: '/skill-heatmap',
   AI_ASSISTANT: '/ai-assistant',
   BATCHES: '/batches',
   PROFILE: '/profile',

@@ -23,6 +23,15 @@ import { Login } from '../pages/Login.jsx';
 import { AdminLogin } from '../pages/AdminLogin.jsx';
 import { Dashboard } from '../pages/Dashboard.jsx';
 import { Learn } from '../pages/Learn.jsx';
+import Practice from '../pages/Practice.jsx';
+import DebugArena from '../pages/DebugArena.jsx';
+import Tests from '../pages/Tests.jsx';
+import Competitions from '../pages/Competitions.jsx';
+import Leaderboard from '../pages/Leaderboard.jsx';
+import Progress from '../pages/Progress.jsx';
+import SkillHeatmap from '../pages/SkillHeatmap.jsx';
+import AiAssistant from '../pages/AiAssistant.jsx';
+import Batches from '../pages/Batches.jsx';
 import { AdminDashboard } from '../pages/AdminDashboard.jsx';
 
 /**
@@ -80,114 +89,57 @@ export const routeConfig = [
     path: ROUTES.PRACTICE,
     title: 'Practice',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="Practice Arena"
-        path={ROUTES.PRACTICE}
-        type="Protected"
-        icon={Code2}
-        description="Curated problem sets across Arrays, Trees, Dynamic Programming, Graphs, and System Design."
-      />
-    ),
+    element: <Practice />,
   },
   {
     path: ROUTES.DEBUG_ARENA,
     title: 'Debug Arena',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="Debug Arena"
-        path={ROUTES.DEBUG_ARENA}
-        type="Protected"
-        icon={Bug}
-        description="Diagnose, analyze, and patch intentional algorithm bugs under rigorous test suites."
-      />
-    ),
+    element: <DebugArena />,
   },
   {
     path: ROUTES.TESTS,
     title: 'Tests',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="Assessments & Tests"
-        path={ROUTES.TESTS}
-        type="Protected"
-        icon={CheckSquare}
-        description="Timed skill evaluations, algorithm benchmarks, and mock interview assessments."
-      />
-    ),
+    element: <Tests />,
   },
   {
     path: ROUTES.COMPETITIONS,
     title: 'Competitions',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="Competitions & Contests"
-        path={ROUTES.COMPETITIONS}
-        type="Protected"
-        icon={Trophy}
-        description="Live coding contests, weekly algorithmic sprints, and campus hackathons."
-      />
-    ),
+    element: <Competitions />,
   },
   {
     path: ROUTES.LEADERBOARD,
     title: 'Leaderboard',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="Leaderboard"
-        path={ROUTES.LEADERBOARD}
-        type="Protected"
-        icon={Medal}
-        description="Verified cohort and global peer rankings based on authentic problem submissions."
-      />
-    ),
+    element: <Leaderboard />,
   },
   {
     path: ROUTES.PROGRESS,
     title: 'Progress',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="Student Progress"
-        path={ROUTES.PROGRESS}
-        type="Protected"
-        icon={TrendingUp}
-        description="Personal learning velocity, topic mastery, and syllabus milestone completion."
-      />
-    ),
+    element: <Progress />,
+  },
+  {
+    path: ROUTES.SKILL_HEATMAP,
+    title: 'Skill Heatmap',
+    type: 'Protected',
+    element: <SkillHeatmap />,
   },
   {
     path: ROUTES.AI_ASSISTANT,
     title: 'AI Assistant',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="AI Assistant"
-        path={ROUTES.AI_ASSISTANT}
-        type="Protected"
-        icon={Bot}
-        description="Intelligent code mentor providing conceptual guidance, edge-case analysis, and hints."
-      />
-    ),
+    element: <AiAssistant />,
   },
   {
     path: ROUTES.BATCHES,
     title: 'Batches',
     type: 'Protected',
-    element: (
-      <RoutePlaceholder
-        title="Batches & Cohorts"
-        path={ROUTES.BATCHES}
-        type="Protected"
-        icon={Users}
-        description="Classroom cohorts, peer study groups, and instructor-guided learning batches."
-      />
-    ),
+    element: <Batches />,
   },
+
   {
     path: ROUTES.PROFILE,
     title: 'Profile',

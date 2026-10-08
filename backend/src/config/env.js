@@ -13,4 +13,7 @@ export const config = {
     secret: process.env.JWT_SECRET || 'codeforge-development-secret-jwt-key-change-in-production',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
+  ai: {
+    geminiApiKey: process.env.GEMINI_API_KEY || null,
+  }
 };

@@ -11,6 +11,7 @@ import {
   Users,
   User,
   Settings,
+  Activity,
 } from 'lucide-react';
 import { ROUTES } from '../../../routes/paths.js';
 
@@ -89,6 +90,13 @@ export const STUDENT_NAV_GROUPS = [
         path: ROUTES.PROGRESS,
         icon: TrendingUp,
         description: 'Curriculum completion status and skill mastery',
+      },
+      {
+        id: 'skill-heatmap',
+        label: 'Skill Heatmap',
+        path: ROUTES.SKILL_HEATMAP,
+        icon: Activity,
+        description: 'Visual timeline of daily coding momentum',
       },
       {
         id: 'ai-assistant',

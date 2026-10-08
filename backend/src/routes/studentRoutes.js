@@ -23,4 +23,12 @@ router.get('/track', requireAuth, getStudentTrack);
 router.post('/track', requireAuth, selectTrack);
 router.put('/track', requireAuth, selectTrack);
 
+import { getProgress, getHeatmap } from '../controllers/progressController.js';
+
+// GET /api/v1/student/progress
+router.get('/progress', requireAuth, getProgress);
+
+// GET /api/v1/student/heatmap
+router.get('/heatmap', requireAuth, getHeatmap);
+
 export default router;

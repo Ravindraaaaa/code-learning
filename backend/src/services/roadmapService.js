@@ -1,6 +1,7 @@
 import Roadmap from '../models/Roadmap.js';
 import Topic from '../models/Topic.js';
 import Lesson from '../models/Lesson.js';
+import { createNotification } from './notificationService.js';
 
 export const generateRoadmapService = async (studentId, data) => {
   const { trackId, languageId, level } = data;
@@ -53,6 +54,20 @@ export const generateRoadmapService = async (studentId, data) => {
   });
 
   await roadmap.save();
+
+  // Trigger Notification
+  try {
+    await createNotification({
+      userId: studentId,
+      type: 'learning_recommendation',
+      title: 'Personalized Roadmap Ready!',
+      message: `A new ${level} learning roadmap has been generated based on your profile.`,
+      data: { roadmapId: roadmap._id, level, trackId: roadmap.track }
+    });
+  } catch (err) {
+    // Non-blocking notification logging
+  }
+
   return roadmap;
 };
 

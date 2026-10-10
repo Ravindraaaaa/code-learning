@@ -32,6 +32,9 @@ export const registerStudent = async ({ name, email, password }) => {
   return newUser.toJSON();
 };
 
+// Pre-computed dummy hash to mitigate timing-based user enumeration attacks
+const DUMMY_PASSWORD_HASH = '$2a$10$768910482048572049284u.x5zV3a3T/4/5K1u.1234567890abc';
+
 export const loginStudent = async ({ email, password }) => {
   if (!isDBConnected()) {
     const error = new Error('Database service is currently unavailable. Please verify MongoDB is running.');
@@ -40,9 +43,13 @@ export const loginStudent = async ({ email, password }) => {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-
+  console.log(`[loginStudent DEBUG] Attempting login for email: '${normalizedEmail}'`);
   const user = await User.findOne({ email: normalizedEmail });
+  console.log(`[loginStudent DEBUG] User.findOne result:`, user ? { id: user._id, email: user.email, role: user.role, hasHash: !!user.passwordHash } : null);
+
   if (!user) {
+    // Perform dummy bcrypt comparison to enforce constant-time execution
+    await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
     const error = new Error('Invalid email or password');
     error.statusCode = 401;
     throw error;
@@ -84,6 +91,8 @@ export const loginAdmin = async ({ email, password }) => {
 
   const user = await User.findOne({ email: normalizedEmail });
   if (!user) {
+    // Perform dummy bcrypt comparison to enforce constant-time execution
+    await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
     const error = new Error('Invalid email or password');
     error.statusCode = 401;
     throw error;

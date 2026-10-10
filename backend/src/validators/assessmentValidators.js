@@ -1,22 +1,34 @@
-import { body } from 'express-validator';
+export const validateAssessmentSubmitInput = (data) => {
+  const errors = {};
+  if (!data || !Array.isArray(data.answers) || data.answers.length === 0) {
+    errors.answers = 'Answers must be a non-empty array';
+  } else {
+    data.answers.forEach((ans, idx) => {
+      if (!ans.questionId) errors[`answers[${idx}].questionId`] = 'Question ID is required';
+      if (ans.selectedOptionIndex === undefined || ans.selectedOptionIndex === null || ans.selectedOptionIndex < 0) {
+        errors[`answers[${idx}].selectedOptionIndex`] = 'Valid option index is required';
+      }
+    });
+  }
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+};
 
-export const validateAssessmentSubmit = [
-  body('track').optional().isMongoId().withMessage('Invalid track ID'),
-  body('language').optional().isMongoId().withMessage('Invalid language ID'),
-  body('answers').isArray().withMessage('Answers must be an array'),
-  body('answers.*.questionId').isMongoId().withMessage('Invalid question ID'),
-  body('answers.*.selectedOptionIndex').isInt({ min: 0 }).withMessage('Selected option index must be a non-negative integer'),
-  body('startedAt').optional().isISO8601().toDate().withMessage('startedAt must be a valid date'),
-];
-
-export const validateQuestionInput = [
-  body('track').optional().isMongoId().withMessage('Invalid track ID'),
-  body('language').optional().isMongoId().withMessage('Invalid language ID'),
-  body('questionText').trim().notEmpty().withMessage('Question text is required'),
-  body('options').isArray({ min: 2 }).withMessage('At least 2 options are required'),
-  body('correctOptionIndex').isInt({ min: 0 }).withMessage('Correct option index must be a valid array index'),
-  body('difficulty')
-    .optional()
-    .isIn(['Beginner', 'Intermediate', 'Advanced'])
-    .withMessage('Difficulty must be Beginner, Intermediate, or Advanced'),
-];
+export const validateQuestionInput = (data) => {
+  const errors = {};
+  if (!data || !data.questionText || !data.questionText.trim()) {
+    errors.questionText = 'Question text is required';
+  }
+  if (!data || !Array.isArray(data.options) || data.options.length < 2) {
+    errors.options = 'At least 2 options are required';
+  }
+  if (!data || data.correctOptionIndex === undefined || data.correctOptionIndex === null || data.correctOptionIndex < 0) {
+    errors.correctOptionIndex = 'Valid correct option index is required';
+  }
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+};

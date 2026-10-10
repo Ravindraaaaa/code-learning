@@ -160,6 +160,32 @@ export const deleteBatch = async (id) => {
   });
 };
 
+export const createPurchaseOrder = async (batchId) => {
+  return request('/purchases/create-order', {
+    method: 'POST',
+    body: JSON.stringify({ batchId }),
+  });
+};
+
+export const verifyPayment = async ({ orderId, paymentId, signature, paymentMethod }) => {
+  return request('/purchases/verify-payment', {
+    method: 'POST',
+    body: JSON.stringify({ orderId, paymentId, signature, paymentMethod }),
+  });
+};
+
+export const getMyPurchases = async () => {
+  return request('/purchases/my-purchases', {
+    method: 'GET',
+  });
+};
+
+export const getAllPurchases = async () => {
+  return request('/purchases/all', {
+    method: 'GET',
+  });
+};
+
 const api = {
   get: async (endpoint, options = {}) => {
     const data = await request(endpoint, { ...options, method: 'GET' });

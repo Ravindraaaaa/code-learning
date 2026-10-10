@@ -23,7 +23,8 @@ export const getLessonByIdService = async (id, userId = null) => {
     if (progress) isCompleted = true;
   }
 
-  return { ...lesson.toJSON(), isCompleted };
+  const lessonObj = (lesson && typeof lesson.toJSON === 'function') ? lesson.toJSON() : (lesson ? { ...lesson } : {});
+  return { ...lessonObj, isCompleted };
 };
 
 export const markLessonCompletedService = async (userId, lessonId) => {

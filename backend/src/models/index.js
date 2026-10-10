@@ -16,12 +16,14 @@ import Competition from './Competition.js';
 import CompetitionQuestion from './CompetitionQuestion.js';
 import CompetitionParticipation from './CompetitionParticipation.js';
 import Batch from './Batch.js';
+import Purchase from './Purchase.js';
+import Notification from './Notification.js';
 
 export { 
   User, Language, Track, Topic, Lesson, LessonProgress, AssessmentQuestion, 
   AssessmentSubmission, Roadmap, DebugChallenge, DebugAttempt, WeeklyTest, 
   WeeklyTestQuestion, WeeklyTestResult, Competition, CompetitionQuestion, 
-  CompetitionParticipation, Batch 
+  CompetitionParticipation, Batch, Purchase, Notification 
 };
 
 export const models = {
@@ -42,7 +44,9 @@ export const models = {
   Competition,
   CompetitionQuestion,
   CompetitionParticipation,
-  Batch
+  Batch,
+  Purchase,
+  Notification
 };
 
 export default models;

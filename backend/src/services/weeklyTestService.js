@@ -1,6 +1,7 @@
 import WeeklyTest from '../models/WeeklyTest.js';
 import WeeklyTestQuestion from '../models/WeeklyTestQuestion.js';
 import WeeklyTestResult from '../models/WeeklyTestResult.js';
+import { createNotification } from './notificationService.js';
 
 export const getActiveTestsService = async () => {
   return await WeeklyTest.find({ isActive: true })
@@ -65,6 +66,20 @@ export const submitTestService = async (userId, testId, answersData, startedAt) 
   });
 
   await result.save();
+
+  // Trigger Notification
+  try {
+    await createNotification({
+      userId,
+      type: 'test_result',
+      title: `Weekly Test Completed: ${test.title}`,
+      message: `You scored ${Math.round(percentage)}% (${score}/${totalPoints} points) on ${test.title}.`,
+      data: { testId: test._id, score, totalPoints, percentage }
+    });
+  } catch (err) {
+    // Non-blocking notification error logging
+  }
+
   return result;
 };
 

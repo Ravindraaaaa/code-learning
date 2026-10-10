@@ -16,7 +16,8 @@ const debugChallengeSchema = new mongoose.Schema({
       explanation: { type: String }
     }
   ],
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  status: { type: String, enum: ['draft', 'published'], default: 'published', index: true }
 }, { timestamps: true });
 
 // Prevent leaking the solution and hidden test cases to the client

@@ -12,7 +12,12 @@ export const requireAuth = (req, res, next) => {
 
   try {
     const decoded = verifyToken(token);
-    req.user = decoded;
+    const userId = decoded.id || decoded._id;
+    req.user = {
+      ...decoded,
+      _id: userId,
+      id: userId
+    };
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

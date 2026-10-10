@@ -8,13 +8,13 @@ import {
 } from '../controllers/assessmentController.js';
 import { requireAuth, requireAdmin } from '../middleware/authMiddleware.js';
 import { validateBody } from '../validators/validateRequest.js';
-import { validateAssessmentSubmit, validateQuestionInput } from '../validators/assessmentValidators.js';
+import { validateAssessmentSubmitInput, validateQuestionInput } from '../validators/assessmentValidators.js';
 
 const router = Router();
 
 // Student routes
 router.get('/questions', requireAuth, getQuestions);
-router.post('/submit', requireAuth, validateBody(validateAssessmentSubmit), submitAssessment);
+router.post('/submit', requireAuth, validateBody(validateAssessmentSubmitInput), submitAssessment);
 
 // Admin routes (CRUD for questions)
 router.post('/questions', requireAuth, requireAdmin, validateBody(validateQuestionInput), createQuestion);

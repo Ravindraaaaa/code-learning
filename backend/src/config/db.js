@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 import { config } from './env.js';
 import { logger } from '../utils/logger.js';
+import { setDevFallbackActive } from './devFallbackStore.js';
 
 let fallbackActive = false;
 
 export const setFallbackActive = (active) => {
   fallbackActive = active;
+  setDevFallbackActive(active);
 };
 
 export const isDevFallbackActive = () => fallbackActive;

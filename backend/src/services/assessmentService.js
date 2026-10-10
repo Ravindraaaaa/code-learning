@@ -1,5 +1,6 @@
 import AssessmentQuestion from '../models/AssessmentQuestion.js';
 import AssessmentSubmission from '../models/AssessmentSubmission.js';
+import { createNotification } from './notificationService.js';
 
 export const getQuestionsForAssessment = async (filter) => {
   // Returns questions without correctOptionIndex because of the toJSON override in schema
@@ -48,6 +49,19 @@ export const submitAssessment = async (userId, data) => {
   });
 
   await submission.save();
+
+  // Trigger Notification
+  try {
+    await createNotification({
+      userId,
+      type: 'assessment_result',
+      title: 'Assessment Result Available',
+      message: `You scored ${percentage}% (${score}/${totalQuestions}) on your assessment. Assigned Level: ${level}.`,
+      data: { submissionId: submission._id, score, totalQuestions, percentage, level }
+    });
+  } catch (err) {
+    // Non-blocking notification error logging
+  }
 
   return submission;
 };

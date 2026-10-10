@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger.js';
 
 /**
  * Secure Sandbox Code Execution Architecture
@@ -28,6 +29,23 @@ class CodeExecutionService {
     const config = this.languageConfig[language];
     if (!config) {
       throw new Error(`Language '${language}' is not supported by the execution service`);
+    }
+
+    // Payload length guards against DoS
+    if (code && code.length > 50000) {
+      return {
+        status: 'failed',
+        output: '',
+        error: 'Code payload exceeds maximum allowed size limit of 50,000 characters.'
+      };
+    }
+
+    if (input && input.length > 10000) {
+      return {
+        status: 'failed',
+        output: '',
+        error: 'Input payload exceeds maximum allowed size limit of 10,000 characters.'
+      };
     }
 
     try {
@@ -73,7 +91,7 @@ class CodeExecutionService {
       };
 
     } catch (error) {
-      console.error('[CodeExecutionService] Sandbox Error:', error.message);
+      logger.error(`[CodeExecutionService] Sandbox Error: ${error.message}`);
       return {
         status: 'failed',
         output: '',

@@ -18,6 +18,12 @@ const assessmentQuestionSchema = new mongoose.Schema({
     type: String,
     enum: ['Beginner', 'Intermediate', 'Advanced'],
     default: 'Beginner'
+  },
+  status: {
+    type: String,
+    enum: ['draft', 'published'],
+    default: 'published',
+    index: true
   }
 }, { timestamps: true });
 

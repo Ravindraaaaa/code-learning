@@ -6,6 +6,7 @@ const weeklyTestSchema = new mongoose.Schema({
   durationMinutes: { type: Number, required: true },
   questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'WeeklyTestQuestion' }],
   isActive: { type: Boolean, default: true },
+  status: { type: String, enum: ['draft', 'published'], default: 'published', index: true },
 }, { timestamps: true });
 
 export const WeeklyTest = mongoose.model('WeeklyTest', weeklyTestSchema);

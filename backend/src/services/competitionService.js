@@ -2,6 +2,7 @@ import Competition from '../models/Competition.js';
 import CompetitionQuestion from '../models/CompetitionQuestion.js';
 import CompetitionParticipation from '../models/CompetitionParticipation.js';
 import { codeExecutionService } from './codeExecutionService.js';
+import { createNotification } from './notificationService.js';
 
 export const getActiveCompetitionsService = async () => {
   return await Competition.find({ isActive: true }).sort('-startTime');
@@ -49,6 +50,20 @@ export const joinCompetitionService = async (userId, competitionId) => {
   });
 
   await participation.save();
+
+  // Trigger Notification
+  try {
+    await createNotification({
+      userId,
+      type: 'competition',
+      title: `Joined Competition: ${comp.title}`,
+      message: `You have successfully joined ${comp.title}. Best of luck!`,
+      data: { competitionId: comp._id, startTime: comp.startTime, endTime: comp.endTime }
+    });
+  } catch (err) {
+    // Non-blocking notification logging
+  }
+
   return participation;
 };
 

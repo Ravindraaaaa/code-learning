@@ -25,6 +25,21 @@ export const ROUTES = {
   PROFILE: '/profile',
   SETTINGS: '/settings',
 
-  // Admin Routes
+  // Admin Application Workspace Routes (15 Sections)
   ADMIN: '/admin',
+  ADMIN_DASHBOARD: '/admin/dashboard',
+  ADMIN_STUDENTS: '/admin/students',
+  ADMIN_LANGUAGES: '/admin/languages',
+  ADMIN_TRACKS: '/admin/tracks',
+  ADMIN_TOPICS: '/admin/topics',
+  ADMIN_LESSONS: '/admin/lessons',
+  ADMIN_QUESTIONS: '/admin/questions',
+  ADMIN_DEBUG_ARENA: '/admin/debug-arena',
+  ADMIN_TESTS: '/admin/tests',
+  ADMIN_COMPETITIONS: '/admin/competitions',
+  ADMIN_BATCHES: '/admin/batches',
+  ADMIN_PURCHASES: '/admin/purchases',
+  ADMIN_PAYMENTS: '/admin/payments',
+  ADMIN_REPORTS: '/admin/reports',
+  ADMIN_SETTINGS: '/admin/settings',
 };

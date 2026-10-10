@@ -3,7 +3,8 @@ import { askAiAssistant } from '../services/aiService.js';
 
 export const askQuestion = async (req, res, next) => {
   try {
-    const { message, context, type } = req.body;
+    const { context, type } = req.body;
+    const message = req.body.message || req.body.question;
     
     if (!message) {
       const error = new Error('Message is required.');

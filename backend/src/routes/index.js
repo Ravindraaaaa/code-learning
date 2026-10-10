@@ -16,6 +16,8 @@ import competitionRoutes from './competitionRoutes.js';
 import leaderboardRoutes from './leaderboardRoutes.js';
 import aiRoutes from './aiRoutes.js';
 import batchRoutes from './batchRoutes.js';
+import purchaseRoutes from './purchaseRoutes.js';
+import notificationRoutes from './notificationRoutes.js';
 
 const router = Router();
 
@@ -37,6 +39,8 @@ router.use('/competitions', competitionRoutes);
 router.use('/leaderboard', leaderboardRoutes);
 router.use('/ai', aiRoutes);
 router.use('/batches', batchRoutes);
+router.use('/purchases', purchaseRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;
 

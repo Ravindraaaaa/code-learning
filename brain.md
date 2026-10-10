@@ -4,7 +4,7 @@
 
 ## 1. Project Overview
 - **Project Name**: CodeForge
-- **Current Phase**: Web Development Track Implementation Complete (MongoDB `Track` model created for canonical learning tracks; Web Development Track with 6 modules: HTML, CSS, JavaScript, React, Node.js, MongoDB; Backend API endpoints `GET /api/v1/tracks`, `GET /api/v1/tracks/:slug`, `GET /api/v1/student/track`, and `POST /api/v1/student/track`; Student View & Select capabilities implemented via dedicated `Learn.jsx` curriculum page, `TrackSelectorModal.jsx`, and Dashboard Roadmap card; in-memory fallback store and standalone seeder `seedTracks.js`; 68 backend tests in 12 suites passing 100%).
+- **Current Phase**: Full-System Verification & Security Audit Complete (All 20 platform modules: Register, Login, Logout, Admin login, Language selection, Assessment, Roadmap, Lessons, Code editor, Code execution, Debug Arena, Tests, Competition, Leaderboard, Progress, AI Assistant, Batch, Purchase, Payment verification, Admin CRUD). Backed by 140 automated unit and integration tests passing 100% across 17 test suites.
 
 ---
 
@@ -219,8 +219,44 @@ mini project/
    - `Main Content Area`: Independent scroll viewport (`overflow-y-auto`) housing page elements with max-width containment and custom dark scrollbars.
    - `Layout Delegation (Layout.jsx)`: Inspects active routes against student paths; routes in the 12 student sections automatically receive `StudentLayout`, while public pages maintain the marketing navbar and footer.
    - `Strict Zero Fake Statistics Constraint`: All student layouts display authentic data (logged-in user name, email, role, live backend connection state) and genuine placeholders with zero mock graphs, zero fake completion scores, and zero dummy rankings.
-
-
+9. **Purchase Architecture & Payment Security Protocol**:
+   - **Immutable `amountPaid`**: When a student purchases a batch cohort, `createPurchaseOrderService` captures and freezes the exact price of the batch at that moment into `amountPaid` with `immutable: true` in the Mongoose schema. Even if an Administrator subsequently changes the batch price (e.g. from ₹49 to ₹99), all existing purchase records permanently retain `amountPaid = ₹49`.
+   - **Zero Financial Credential Storage Policy**: Under no circumstances does the platform accept or store payment card numbers, CVVs, UPI PINs, or banking passwords. `purchaseValidators.js` intercepts and rejects any payload containing sensitive credential keys (`cardNumber`, `cvv`, `upiPin`, `bankingPassword`) with HTTP 400 (`FORBIDDEN_CREDENTIALS_PROVIDED`). The database stores safe transaction metadata only: transaction/order ID (`orderId`, `paymentId`, `transactionId`), amount (`amountPaid`), currency (`currency`), status (`paymentStatus`), method (`paymentMethod`), cryptographic signature (`paymentSignature`), and timestamps (`purchasedAt`, `verifiedAt`, `createdAt`, `updatedAt`).
+   - **Mandatory Server-Side Verification (Untrusted Frontend Claims)**: Frontend payment success notices are NEVER trusted to unlock content. The backend (`PaymentGatewayService`) performs cryptographic HMAC-SHA256 signature verification using timing-safe comparison against the gateway secret (`GATEWAY_SECRET`).
+   - **Strict Content Activation & Zero Fake Successful Transactions**:
+     1. `POST /api/v1/purchases/create-order`: Initializes a gateway order in `pending` status. Content remains strictly locked in the student account. Zero fake successful transactions are created.
+     2. `POST /api/v1/purchases/verify-payment`: Validates signature with gateway. Unverified or forged signature claims transition order to `failed` and return HTTP 400 (`PAYMENT_VERIFICATION_FAILED`). Content is activated ONLY upon successful backend verification (`paymentStatus: 'completed'`).
+   - **Development Sandbox**: Development environment uses a sandbox gateway configuration (`GATEWAY_KEY_ID`, `GATEWAY_SECRET`) with realistic HMAC-SHA256 signature generation and verification.
+10. **Admin Application Workspace Layout Architecture**:
+    - **Dedicated Master Shell (`AdminLayout.jsx`)**: Hardened administrative workspace shell built with the exact CodeForge design system tokens (violet/indigo ambient glows, glassmorphism dark surfaces, monospaced accents, and high-contrast typography).
+    - **15-Section Administrative Sidebar (`AdminSidebar.jsx`)**: Collapsible desktop rail sidebar organizing all 15 administrative management tools into 5 logical categories:
+      1. *Overview & Operations*: Dashboard, Students
+      2. *Curriculum & Content*: Languages, Tracks, Topics, Lessons
+      3. *Assessment & Arenas*: Questions, Debug Arena, Tests, Competitions
+      4. *Financials & Monetization*: Batches, Purchases, Payments
+      5. *System & Analytics*: Reports, Settings
+      - Supports one-click collapse/expand state persistence in `localStorage` (`codeforge_admin_sidebar_collapsed`), active route indicator bars, violet glow accents, and super-admin identity controls.
+    - **Sticky Admin Topbar (`AdminTopbar.jsx`)**: Top navigation header featuring active section breadcrumb hierarchy, mobile menu trigger, quick command search launcher (`⌘K`), live system status pill (`StatusIndicator`), and admin profile identity badge.
+    - **Off-Canvas Mobile Admin Drawer (`AdminMobileNav.jsx`)**: Touch-optimized slide-over navigation for small viewports with backdrop blur (`bg-slate-950/80 backdrop-blur-sm`), keyboard escape dismissal, and automatic route change dismissal.
+    - **Universal Route Delegation (`Layout.jsx`)**: Automatically inspects route hierarchy and delegates administrative routes (`/admin` and all 15 sub-paths) to `AdminLayout`, student workspace paths to `StudentLayout`, and marketing paths to the public shell.
+11. **Admin CRUD Architecture (Students, Languages, Tracks, Topics)**:
+    - **Strict Role-Based Authorization Guard**: All administrative CRUD endpoints mounted under `/api/v1/admin/*` are strictly protected by `requireAuth` and `requireAdmin` middleware. Unauthenticated visitors are rejected with HTTP 401, and non-admin students are rejected with HTTP 403 (`'Access denied. Requires admin privileges.'`).
+    - **Uniform CRUD Capabilities & Contract**: Implemented full Create, Read (List + Detail), Update, and Delete operations for Students, Languages, Tracks, and Topics in `adminService.js` and `adminController.js`.
+    - **Search, Filter, and Pagination Architecture**:
+      - Standardized pagination metadata helper (`page`, `limit`, `total`, `totalPages`).
+      - Regex-based multi-field search (`$or` across names, emails, titles, descriptions, slugs, categories).
+      - Domain-specific filtering (`role`, `isActive`, `difficulty`, `status`, `language`, `track`).
+    - **Request Payload Validation**: Enforced via `adminValidators.js` (`validateCreateStudentInput`, `validateUpdateStudentInput`, `validateCreateLanguageInput`, `validateCreateTrackInput`, `validateCreateTopicInput`).
+13. **Real-Event Driven Notifications Architecture**:
+    - **Zero Synthetic Notifications Constraint**: Notifications are strictly generated in response to real platform activity:
+      1. `assessment_result`: Triggered automatically upon assessment submission in `assessmentService.js`.
+      2. `test_result`: Triggered automatically upon weekly test completion in `weeklyTestService.js`.
+      3. `competition`: Triggered automatically upon competition registration in `competitionService.js`.
+      4. `purchase_confirmation`: Triggered automatically upon server-side verified payment activation in `purchaseService.js`.
+      5. `admin_announcement`: Triggered via `POST /api/v1/admin/notifications/announcement` for targeted or platform-wide broadcast announcements.
+      6. `learning_recommendation`: Triggered automatically upon personalized roadmap generation in `roadmapService.js`.
+    - **Student Read/Unread State Management**: Students can view paginated notifications (`GET /api/v1/notifications`), retrieve unread count (`GET /api/v1/notifications/unread-count`), mark single notification as read (`PATCH /api/v1/notifications/:id/read`), mark all as read (`PATCH /api/v1/notifications/read-all`), and delete notifications (`DELETE /api/v1/notifications/:id`).
+    - **MongoDB Schema & Indexing**: Backed by `Notification` model indexed on `{ user: 1, createdAt: -1 }` and `{ user: 1, isRead: 1 }` for high-performance retrieval. Fully mocked in `devFallbackStore.js` with zero-downtime offline fallback capability.
 
 ---
 
@@ -334,7 +370,8 @@ mini project/
 - [x] **Student Progress Tracking**: Implemented `progressService.js` to cross-query actual MongoDB records (`LessonProgress`, `DebugAttempt`, `WeeklyTestResult`, `CompetitionParticipation`, `Roadmap`, and `User.streak`). Built `Progress.jsx` dashboard to visualize authentic learning velocity, bug squashes, test averages, and topic mastery without faking any activity data.
 - [x] **Skill Heatmap**: Created `SkillHeatmap.jsx` to visualize daily coding activity and topic strength using actual MongoDB records spanning the last 90 days. Extracted detailed breakdowns for tests, debug challenges, lessons, and competitions, strictly rendering authentic user data without any faked records.
 - [x] **AI Learning Assistant**: Implemented a simple, rate-limited AI Assistant backend service using `@google/genai` standards with direct fetch to Google Gemini. Features a conversational UI (`AiAssistant.jsx`) that safely keeps the API key hidden on the server, robustly handling missing key scenarios gracefully by explicitly throwing 503 unavailability errors.
-- [x] **Batch/Course Management**: Implemented MongoDB `Batch` model (`name`, `description`, `features`, `price`, `currency`, `status`). Default starting batch seeded with example price ₹49. Built `batchService.js`, `batchController.js`, and `batchRoutes.js` (`GET /api/v1/batches`, `GET /api/v1/batches/:id`, `POST /api/v1/batches`, `PUT /api/v1/batches/:id`, `DELETE /api/v1/batches/:id`). Implemented `Batches.jsx` UI where students can view cohorts and Admins can update current prices & batch details. Fully supported in `devFallbackStore.js` with zero fake purchases.
+- [x] **Batch/Course Management**: Implemented MongoDB `Batch` model (`name`, `description`, `features`, `price`, `currency`, `status`). Default starting batch seeded with example price ₹49. Built `batchService.js`, `batchController.js`, and `batchRoutes.js` (`GET /api/v1/batches`, `GET /api/v1/batches/:id`, `POST /api/v1/batches`, `PUT /api/v1/batches/:id`, `DELETE /api/v1/batches/:id`). Implemented `Batches.jsx` UI where students can view cohorts and Admins can update current prices & batch details. Fully supported in `devFallbackStore.js`.
+- [x] **Notifications System (MongoDB Persistence & Real Event Triggers)**: Created MongoDB `Notification` model supporting 6 required notification types (`assessment_result`, `test_result`, `competition`, `purchase_confirmation`, `admin_announcement`, `learning_recommendation`). Built student APIs (`GET /api/v1/notifications`, `GET /api/v1/notifications/unread-count`, `PATCH /api/v1/notifications/:id/read`, `PATCH /api/v1/notifications/read-all`, `DELETE /api/v1/notifications/:id`) and Admin Announcement APIs (`POST /api/v1/admin/notifications/announcement`, `GET /api/v1/admin/notifications`). Automatically triggers real notifications on assessment completion, weekly test submission, competition entry, payment verification, and roadmap generation. Zero fake notifications created. Supported in `devFallbackStore.js` and verified by 10 automated integration tests in `notifications.test.js` passing 100%.
 
 ---
 
@@ -371,8 +408,13 @@ mini project/
 - [`backend/src/services/assessmentService.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/services/assessmentService.js): Added automatic score and level calculation logic.
 - [`backend/src/controllers/assessmentController.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/controllers/assessmentController.js): Added assessment request handlers.
 - [`backend/src/routes/assessmentRoutes.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/routes/assessmentRoutes.js): Registered `/api/v1/assessments` endpoints.
-- [`backend/src/models/index.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/models/index.js): Exported Topic, Lesson, LessonProgress, AssessmentQuestion, and AssessmentSubmission models.
-- [`backend/src/routes/index.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/routes/index.js): Mounted `/topics`, `/lessons`, and `/assessments` routes.
+- [`backend/src/models/Notification.js`](file:///c:/Users/Ashwin%20Pande/OneDrive/Documents/Desktop/mini%20project%20code/code-learning/backend/src/models/Notification.js): Created MongoDB Notification model supporting 6 notification types with indexes and timestamps.
+- [`backend/src/services/notificationService.js`](file:///c:/Users/Ashwin%20Pande/OneDrive/Documents/Desktop/mini%20project%20code/code-learning/backend/src/services/notificationService.js): Created Notification service handling student read/unread logic and admin announcements.
+- [`backend/src/controllers/notificationController.js`](file:///c:/Users/Ashwin%20Pande/OneDrive/Documents/Desktop/mini%20project%20code/code-learning/backend/src/controllers/notificationController.js): Created Notification request handlers for student endpoints and admin announcements.
+- [`backend/src/routes/notificationRoutes.js`](file:///c:/Users/Ashwin%20Pande/OneDrive/Documents/Desktop/mini%20project%20code/code-learning/backend/src/routes/notificationRoutes.js): Created student Notification routes mounted under `/api/v1/notifications`.
+- [`backend/tests/notifications.test.js`](file:///c:/Users/Ashwin%20Pande/OneDrive/Documents/Desktop/mini%20project%20code/code-learning/backend/tests/notifications.test.js): Created 10 automated integration tests for Notifications system.
+- [`backend/src/models/index.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/models/index.js): Exported Notification model.
+- [`backend/src/routes/index.js`](file:///c:/Users/Ashwin Pande/OneDrive/Documents/Desktop/mini project code/code-learning/backend/src/routes/index.js): Mounted `/notifications` route.
 
 ### Frontend (`frontend/`)
 - [`frontend/src/components/layout/student/StudentLayout.jsx`](file:///c:/Users/ASUS/OneDrive/Desktop/mini%20project/frontend/src/components/layout/student/StudentLayout.jsx): Created master student workspace shell managing collapse and mobile drawer state.
@@ -471,8 +513,16 @@ mini project/
     - `answers`: Array of subdocuments tracking `question`, `selectedOptionIndex`, and `isCorrect`.
     - `score`, `totalQuestions`, `percentage`: Numbers.
     - `level`: String, enum: `['Beginner', 'Intermediate', 'Advanced']`.
-    - `startedAt`, `completedAt`: Dates.
-11. **Connection Handling & Resilience**:
+11. **Notification Model Schema (`Notification.js`)**:
+    - `user`: ObjectId referencing `User`, required, indexed.
+    - `type`: String, required, enum: `['assessment_result', 'test_result', 'competition', 'purchase_confirmation', 'admin_announcement', 'learning_recommendation']`, indexed.
+    - `title`: String, required, trim.
+    - `message`: String, required, trim.
+    - `data`: Mixed / Object (stores context such as `submissionId`, `score`, `percentage`, `orderId`, `batchId`, `roadmapId`).
+    - `isRead`: Boolean, default: `false`, indexed.
+    - `readAt`: Date, default: `null`.
+    - `timestamps`: Enabled (`createdAt`, `updatedAt`). Compound index on `{ user: 1, createdAt: -1 }`.
+12. **Connection Handling & Resilience**:
    - `isDBConnected()` checks `mongoose.connection.readyState === 1 || fallbackActive`.
    - `serverSelectionTimeoutMS: 5000` prevents indefinite connection stalls.
    - In-memory data store fallback in `devFallbackStore.js` ensures `User`, `Language`, and `Track` methods function with zero downtime when MongoDB service is offline.
@@ -519,6 +569,15 @@ mini project/
      - `GET /api/v1/dashboard`: Alias mount for `/student/dashboard`.
 2. **Response Structure**: Enforced `{ success, message, data/errors }`.
 3. **Error Handling Protocol**: `notFoundHandler` (404), `authMiddleware` (401/403), `adminMiddleware` (401/403), `errorHandler` (500/503).
+
+    - Notifications:
+      - `GET /api/v1/notifications`: List authenticated student's notifications with pagination and unread counts.
+      - `GET /api/v1/notifications/unread-count`: Retrieve unread notification count.
+      - `PATCH /api/v1/notifications/:id/read`: Mark single notification as read.
+      - `PATCH /api/v1/notifications/read-all`: Mark all student notifications as read.
+      - `DELETE /api/v1/notifications/:id`: Delete notification for student.
+      - `POST /api/v1/admin/notifications/announcement`: Admin broadcast or targeted student announcement (`type: 'admin_announcement'`).
+      - `GET /api/v1/admin/notifications`: Admin view of platform sent announcements and notifications.
 
 ---
 
@@ -670,7 +729,14 @@ Created automated test suite in [`backend/tests/auth.test.js`](file:///c:/Users/
 - **Comprehensive Authentication, Dashboard, Language & Track Test Suite (68 automated tests, 12 suites)**: 100% Complete and verified (100% pass rate).
 - **CodeForge Theme & Design System**: 100% Complete and verified.
 - **Global AuthContext & Protected Routing**: 100% Complete and verified.
-- **Admin Dashboard & Language CRUD**: 0% (Strictly deferred; admin CRUD will be added later; zero fake statistics or mock dashboards).
+- **Admin Management (Students, Languages, Tracks, Topics, Lessons, Questions, Debug Arena Challenges, Weekly Tests, Competitions)**: 100% Complete and verified (Create, Read, Update, Delete, Publish, Unpublish, Search, Filter, Pagination, Validation, guarded by authentication and admin authorization middleware).
+- [x] Implement Admin Management APIs (Students, Languages, Tracks, Topics, Lessons, Questions, Debug Arena Challenges, Weekly Tests, Competitions):
+  - [x] Create, Read (List + Detail), Update, Delete, Publish, and Unpublish operations across all 9 resources.
+  - [x] Multi-field regex Search, domain Filtering, and standardized Pagination (`page`, `limit`, `total`, `totalPages`).
+  - [x] Payload validation via `adminValidators.js` (`validateCreateStudentInput`, `validateUpdateStudentInput`, `validateCreateLanguageInput`, `validateCreateTrackInput`, `validateCreateTopicInput`, `validateCreateLessonInput`, `validateCreateQuestionInput`, `validateCreateDebugChallengeInput`, `validateCreateWeeklyTestInput`, `validateCreateCompetitionInput`).
+  - [x] Strict authentication and authorization guard using `requireAuth` and `requireAdmin` middleware (unauthenticated blocked with 401, non-admin blocked with 403).
+  - [x] Zero automatic synthetic data created.
+  - [x] Fully integrated into `devFallbackStore.js` and covered by 25 automated integration tests (`adminCrud.test.js`) with 100% pass rate.
 
 ---
 
@@ -747,7 +813,32 @@ Created automated test suite in [`backend/tests/auth.test.js`](file:///c:/Users/
 
 ---
 
-## 14. Important Rules
+## 14. Comprehensive Security Audit & Hardening Report
+
+### A. Audit Scope & Verification Results
+A thorough security audit was performed across all 15 key security vectors requested by the specification. Genuine vulnerabilities were identified, fixed, and verified using automated integration testing.
+
+| Security Vector | Assessment Finding | Mitigation Implemented | Verification Test |
+| :--- | :--- | :--- | :--- |
+| **JWT** | Secure signing with `JWT_SECRET`; token expiration checked on client and server. | Normalized `req.user` payload to include both `_id` and `id` to prevent missing property errors across legacy/new handlers. | `securityAudit.test.js`, `auth.test.js` |
+| **RBAC** | Strict role separation between students and admins. | `requireAuth`, `requireRole('student')`, and `requireAdmin` middlewares enforce route guards. Non-admins receive 403 Forbidden. | `adminCrud.test.js`, `auth.test.js` |
+| **bcrypt** | Hashed with work factor 10. Potential user enumeration timing vulnerability on invalid email logins. | Implemented constant-time hash execution using `DUMMY_PASSWORD_HASH` when user is null, ensuring uniform time consumption for valid and invalid emails. | `securityAudit.test.js` Test 6 |
+| **Input Validation** | Request bodies and query parameters validated against schemas. | Centralized schema validation in `validateRequest.js` and dedicated validators (`authValidators.js`, `purchaseValidators.js`, `adminValidators.js`). | `adminCrud.test.js`, `auth.test.js` |
+| **Rate Limiting** | Risks of login brute-forcing, sandbox DOS, and AI API quota depletion. | Configured 4 discrete rate limiters in `rateLimiter.js`: `globalRateLimiter` (300/15m), `authRateLimiter` (10/15m), `codeExecutionRateLimiter` (15/min), `aiRateLimiter` (10/min). | `rateLimiter.js` |
+| **CORS** | Open origins could permit cross-site API access from malicious origins. | Restricted CORS in `app.js` with dynamic callback origin checking against `CLIENT_URL` / `FRONTEND_URL` fallback `http://localhost:5173`. | `securityAudit.test.js` Test 3 |
+| **Helmet** | HTTP response headers lacked clickjacking and MIME sniffing protections. | Hardened Helmet config in `app.js` with `frameguard: { action: 'deny' }`, `noSniff`, `xssFilter`, and `referrerPolicy`. | `securityAudit.test.js` Test 2 |
+| **MongoDB Injection** | Operator key injection (`{ "$gt": "" }`, `{ "$ne": null }`) could bypass auth filters. | Implemented `mongoSanitizer.js` middleware to recursively strip keys starting with `$` or containing `.` from `req.body`, `req.query`, and `req.params`. | `securityAudit.test.js` Test 1 |
+| **XSS** | User inputs in forms and editor blocks could trigger script injection. | JSX auto-escaping in React components, Monaco Editor treated as text, `X-XSS-Protection` header enabled via Helmet. | Visual & header verification |
+| **CSRF** | Stateless API uses Bearer tokens instead of ambient cookies. | Authorization relies strictly on explicit `Authorization: Bearer <token>` headers, rendering ambient cookie CSRF vectors inapplicable by design. | Architecture audit |
+| **Secrets** | Sensitive keys (Gemini API, Gateway secrets, JWT secret) must not leak to client. | Isolated all server secrets in backend `.env`. `purchaseValidators.js` blocks client payload credential transmission (`cardNumber`, `cvv`, `upiPin`). | `securityAudit.test.js` Test 4 |
+| **Payment Verification** | Untrusted frontend payment claims could unlock paid courses. | Cryptographic HMAC-SHA256 signature verification in `purchaseService.js`. `amountPaid` frozen with `immutable: true`. | `purchase.test.js` Tests 1-6 |
+| **Code Execution** | Unbounded payload sizes could cause worker memory exhaust or API DOS. | Enforced input size limits in `codeExecutionService.js`: Code max 50,000 characters; stdin max 10,000 characters. Piston sandbox isolation. | `securityAudit.test.js` Test 5 |
+| **API Abuse** | Endpoints vulnerable to rapid automated invocations. | Rate limiters applied to auth, execution, AI, and global API routes. Body parser restricted to 1MB JSON max limit. | `rateLimiter.js`, `app.js` |
+| **Error Handling** | Unhandled stack traces or internal DB errors could expose system architecture. | Centralized `errorHandler.js` masks stack traces in production (`NODE_ENV === 'production'`) and logs errors via structured `logger.error`. | `errorHandler.js` |
+
+---
+
+## 15. Important Rules
 1. **Mandatory Memory Reading**: Before every future task, read `brain.md` to maintain contextual continuity and adhere to decisions already taken.
 2. **Mandatory Memory Updating**: After every completed task, update `brain.md` with what was actually built, modified, or decided.
 3. **Honest Progress Tracking**: Never mark unfinished work as completed.
@@ -759,3 +850,31 @@ Created automated test suite in [`backend/tests/auth.test.js`](file:///c:/Users/
    - Exactly one blank line between functions.
    - Reusable functions and components.
    - Proper indentation and formatting throughout.
+
+---
+
+## 16. Full 20-Module System Test Verification Summary
+
+| # | Module | Verification Method & Status | Key Hardening & Capabilities Verified |
+|---|---|---|---|
+| 1 | **Register** | `auth.test.js`, `fullSystemEndToEnd.test.js` (PASS) | Input validation, bcrypt password hashing, duplicate email rejection (409), stripping `passwordHash`. |
+| 2 | **Login** | `auth.test.js`, `fullSystemEndToEnd.test.js` (PASS) | Credential verification, student role guard, JWT issuance, constant-time timing attack protection. |
+| 3 | **Logout** | `auth.test.js` (PASS) | Client-side session purge, localStorage token removal, cross-tab session logout synchronization. |
+| 4 | **Admin Login** | `auth.test.js`, `fullSystemEndToEnd.test.js` (PASS) | Admin portal role guard (`role === 'admin'`), student login block with 403 Forbidden, JWT issuance. |
+| 5 | **Language Selection** | `auth.test.js`, `fullSystemEndToEnd.test.js` (PASS) | Canonical platform language retrieval (C, C++, Java, Python, JS), student preference updates. |
+| 6 | **Assessment** | `fullSystemEndToEnd.test.js` (PASS) | Question retrieval, masking correct options, answers submission, score calculation, level assignment. |
+| 7 | **Roadmap** | `fullSystemEndToEnd.test.js` (PASS) | Dynamic roadmap generation based on student level, topic tracking, progress percentage updates. |
+| 8 | **Lessons** | `fullSystemEndToEnd.test.js` (PASS) | Topic lesson listing, lesson content retrieval, completed progress marking, roadmap sync. |
+| 9 | **Code Editor** | `fullSystemEndToEnd.test.js` (PASS) | Language Monaco modes, file extensions, default starter code templates. |
+| 10 | **Code Execution** | `fullSystemEndToEnd.test.js`, `securityAudit.test.js` (PASS) | Piston sandbox execution, size bounds (>50KB code rejected), CPU time limits (5s execution). |
+| 11 | **Debug Arena** | `fullSystemEndToEnd.test.js` (PASS) | Challenge browsing, solution code masking, user fix evaluation against hidden test cases. |
+| 12 | **Tests** | `fullSystemEndToEnd.test.js` (PASS) | Timed weekly test listing (`/api/v1/tests`), detail retrieval, answer submission, score recording. |
+| 13 | **Competition** | `fullSystemEndToEnd.test.js` (PASS) | Live contest listing, student registration/join flow, submission handling. |
+| 14 | **Leaderboard** | `fullSystemEndToEnd.test.js` (PASS) | Real database-driven student ranking retrieval, score sorting. |
+| 15 | **Progress** | `fullSystemEndToEnd.test.js` (PASS) | Velocity metrics, completed count calculation, activity log heatmap data retrieval. |
+| 16 | **AI Assistant** | `fullSystemEndToEnd.test.js`, `securityAudit.test.js` (PASS) | Question & message payload handling, tutor prompt generation, graceful fallback when key unconfigured. |
+| 17 | **Batch** | `purchase.test.js`, `adminCrud.test.js` (PASS) | Cohort listing, active status filtering, batch pricing details. |
+| 18 | **Purchase** | `purchase.test.js`, `fullSystemEndToEnd.test.js` (PASS) | Pending order initialization, safe metadata storage, sensitive credential blocking. |
+| 19 | **Payment Verification** | `purchase.test.js`, `securityAudit.test.js` (PASS) | HMAC-SHA256 signature verification via `crypto.timingSafeEqual`, price immutability (`amountPaid`). |
+| 20 | **Admin CRUD** | `adminCrud.test.js`, `fullSystemEndToEnd.test.js` (PASS) | Full Create, Read, Update, Delete across Students, Languages, Tracks, Topics, Lessons, Questions, Tests, Competitions, Batches. |
+

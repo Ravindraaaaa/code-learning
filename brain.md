@@ -878,3 +878,198 @@ A thorough security audit was performed across all 15 key security vectors reque
 | 19 | **Payment Verification** | `purchase.test.js`, `securityAudit.test.js` (PASS) | HMAC-SHA256 signature verification via `crypto.timingSafeEqual`, price immutability (`amountPaid`). |
 | 20 | **Admin CRUD** | `adminCrud.test.js`, `fullSystemEndToEnd.test.js` (PASS) | Full Create, Read, Update, Delete across Students, Languages, Tracks, Topics, Lessons, Questions, Tests, Competitions, Batches. |
 
+---
+
+## 17. Authentication UI Redesign & Google OAuth Specification
+
+### Redesigned Student Login & Registration Experience
+1. **Visual Identity Alignment**:
+   - Built on CodeForge's dark navy (`#060911` / `#0b0f19`) and violet/indigo accent design system.
+   - Clean, human-designed single-surface card containers (`rounded-2xl border border-border-subtle bg-surface/90 shadow-surface-md backdrop-blur-sm`).
+   - Removed nested cards inside cards, oversized margins, and unnecessary spacing.
+   - Replaced Unicode emojis and random icons with React Icons (`react-icons/fi` for UI inputs and controls, `react-icons/fc` for Google).
+2. **Elimination of Fake Demo Credentials**:
+   - Completely purged `fillDemoCredentials` and the public "Auto-Fill Demo Student" / "Auto-Fill Demo Admin" buttons from the user-facing authentication screens.
+   - Removed mock developer jargon (`passwordHash secured`) from the user registration success display.
+3. **Form Fields & Real Model Parity**:
+   - **Student Registration**: Aligned with the Mongoose `User` model and `validateRegisterInput` validator:
+     - `name`: Full Name (2–50 characters, required).
+     - `email`: Student Email (valid RFC format, required, normalized).
+     - `password`: Password (minimum 8 characters, required).
+     - `confirmPassword`: Confirmation password with matching validation.
+   - **Student Login**:
+     - `email`: Student Email (required, format validated).
+     - `password`: Password (required, toggleable show/hide with `FiEye`/`FiEyeOff`).
+     - Clear inline validation errors and actionable error alerts.
+4. **Google Sign-In Architecture & Remaining Setup Requirements**:
+   - Implemented real "Continue with Google" button featuring authentic React Icons `FcGoogle`.
+   - **Zero Fake Authentication**: When clicked without Google OAuth configuration, the UI transparently informs the user that `VITE_GOOGLE_CLIENT_ID` is required, rather than faking an authentication state.
+   - **Required Google Cloud Setup**:
+     - Create project in Google Cloud Console & configure OAuth Consent Screen.
+     - Generate Web Application Client ID.
+     - Configure Authorized JavaScript Origins: `http://localhost:5173`.
+     - Configure Authorized Redirect URIs: `http://localhost:5173/auth/google/callback`.
+     - Add `VITE_GOOGLE_CLIENT_ID=your_google_client_id_here` to `frontend/.env`.
+     - When backend server exchange is implemented: Add `GOOGLE_CLIENT_SECRET` to `backend/.env` (never exposed to client).
+5. **Password Reset Status**:
+   - Currently, no password reset / forgot password endpoint exists in the backend API or frontend routes. A reset flow is deferred until backend password reset tokens and email dispatching are architected.
+
+---
+
+## 18. Backend Connection Fix, Master .env Setup & Google OAuth Integration
+
+### 1. Root Cause & Backend Dependency Resolution
+- **Issue Diagnosed**: The backend server was crashing on startup with `ERR_MODULE_NOT_FOUND: Cannot find package 'express-validator'`. Analysis via `npm ls` showed three unmet dependencies (`express-validator`, `express-rate-limit`, and `axios`) declared in `backend/package.json` that had never been installed in `backend/node_modules/`.
+- **Resolution**: Ran `npm install` in `backend/`. Nodemon automatically picked up the dependencies, initialized the server on port 5000, and activated `devFallbackStore.js` when MongoDB on port 27017 was not detected.
+- **Validator Compatibility**: Enhanced `validateBody` in `validateRequest.js` to execute both `express-validator` middleware chains (used by `topicValidators.js` and `lessonValidators.js`) and standard validation functions (used by `authValidators.js`).
+
+### 2. Environment Configuration (.env) Files
+- **Master Root `.env`**: Created `c:/Users/ASUS/OneDrive/Desktop/mini project/.env` containing all environment variables needed across the workspace:
+  - `PORT=5000`, `NODE_ENV=development`, `CLIENT_URL=http://localhost:5173`
+  - `MONGODB_URI=mongodb://localhost:27017/codeforge`
+  - `JWT_SECRET`, `JWT_EXPIRES_IN=7d`
+  - `VITE_API_URL=http://localhost:5000/api/v1`
+  - `VITE_GOOGLE_CLIENT_ID=`, `GOOGLE_CLIENT_SECRET=`
+  - `GEMINI_API_KEY=`, `GATEWAY_KEY_ID=`, `GATEWAY_SECRET=`
+- **Frontend `.env`**: Configured with `VITE_API_URL` and `VITE_GOOGLE_CLIENT_ID`.
+- **Backend `.env`**: Configured with server, MongoDB, JWT, Google OAuth, and AI keys.
+
+### 3. Google Authentication Pipeline
+- **Backend**:
+  - Implemented `loginWithGoogle` in `authService.js` supporting Google ID token verification via `https://oauth2.googleapis.com/tokeninfo`.
+  - Added `googleLogin` controller handler in `authController.js`.
+  - Mounted `POST /api/v1/auth/google` in `authRoutes.js`.
+  - Automatically provisions new student accounts with random password hashes if not already present.
+- **Frontend**:
+  - Added `googleLogin` API method in `api.js`.
+  - Added `loginGoogle` session handler in `AuthContext.jsx`.
+  - Added `GoogleCallback.jsx` route component mounted at `/auth/google/callback` (`ROUTES.GOOGLE_CALLBACK`) in `routeConfig.jsx`.
+
+### 4. Verification & Health Status
+- **API Health Check**: `GET /api/v1/health` verified returning `status: "healthy"` and database `status: "connected (in-memory mode)"` on port 5000.
+- **Student Registration**: `POST /api/v1/auth/register` verified returning HTTP 201 with sanitized user.
+- **Student Login**: `POST /api/v1/auth/login` verified returning HTTP 200 with JWT token; invalid credentials correctly return HTTP 401.
+- **Google Auth**: `POST /api/v1/auth/google` verified returning HTTP 200 with JWT token.
+- **Unit Tests**: All 68 backend tests in `auth.test.js` passing 100%.
+- **Frontend Build**: `npm run build` passing with 0 errors.
+
+---
+
+## 19. Light-Themed Rounded Authentication Redesign & Validation Specification
+
+### 1. Visual Redesign & Design Language
+- **Soft Warm Background**: Authentication screen uses a calm, off-white/warm cream canvas (`bg-[#faf8f5]`) replacing the previous dark, oversized dashboard look.
+- **Card Styling**: Centered `max-w-[420px]` white form card with generous rounded corners (`rounded-3xl`), thin subtle border (`border border-stone-200/90`), and soft warm-grey elevation (`shadow-[0_10px_35px_-4px_rgba(28,25,23,0.06)]`).
+- **Typography & Accents**: Natural typography using charcoal/dark brown primary CTA button (`bg-stone-900 hover:bg-stone-800 text-white rounded-xl`), accompanied by a restrained violet CodeForge logo badge (`bg-violet-600/10 text-violet-700`).
+- **Icons**: React Icons used throughout (`FiMail`, `FiLock`, `FiUser`, `FiEye`, `FiEyeOff`, `FiCheck`, `FiAlertCircle`, `FiLoader`, and `FcGoogle`).
+- **Clean Aesthetic**: Removed neon glows, decorative sub-cards, and fake credentials.
+
+### 2. Viewport & Scroll Optimization
+- **Zero Desktop Scrolling**: Auth pages fit within standard desktop viewports (1080p, 1440p, 768p laptops) without vertical or horizontal scrollbars.
+- **Layout & Navbar Integration**: 
+  - `Layout.jsx` detects `isAuthPage` (`/login`, `/register`, `/admin/login`).
+  - Hides the extensive page footer on auth routes.
+  - Sized precisely via `min-h-[calc(100vh-4rem)] flex items-center justify-center p-4`.
+  - Navbar dynamically adjusts to warm cream background with dark text on auth routes for seamless visual harmony.
+- **Responsive Fallback**: When viewed on small mobile screens or constrained viewports, scrolling is enabled gracefully via `overflow-y-auto` to prevent field or button clipping.
+
+### 3. Real-Time Email & Input Validation
+- **Untouched / Empty**: Neutral stone border (`border-stone-200`) and no success/error icon.
+- **Invalid Format**: Subtle red border (`border-red-400 bg-red-50/20`), red warning icon (`FiAlertCircle`), and concise helper message ("Enter a valid email address.").
+- **Valid Format**: Subtle green/teal border (`border-emerald-500 bg-emerald-50/20`) and check icon (`FiCheck`).
+- **Interactive Timing**: Validation triggers on blur or as the user types after interacting (`touched` state tracking), avoiding premature errors before user input.
+
+### 4. Password Security & Generic Login Errors
+- **Show/Hide Password**: Accessible toggle button with `FiEye` / `FiEyeOff` icons.
+- **Information Leak Prevention**: Failed login requests never reveal account existence or specific field errors. Any 401 or authentication failure renders a generic, secure notification: `"Invalid email or password."`.
+- **Registration Constraints**: Real-time password length validation ($\ge 8$ characters) matching backend rules, plus confirm password match indicator.
+- **No Plaintext Passwords**: Passwords are never logged or stored in client storage.
+
+### 5. Submission & Loading Feedback
+- **Disabled Duplicate Requests**: Form fields and submit button disable immediately upon submission.
+- **Loading State**: Submit button displays an inline spinner (`FiLoader animate-spin`) with clear status text ("Signing in…" / "Creating account…").
+- **State Recovery**: Loading automatically resets on either success or error, preserving form state for user correction.
+
+### 6. Light-Themed Google Sign-In
+- Polished, light-themed button with authentic `FcGoogle` icon.
+- If Google OAuth Client ID is missing, presents a clear, actionable notification instead of simulating fake authentication.
+
+---
+
+## 20. CodeForge Student Login Page Refinements
+
+### 1. Visual Design & Card Styling
+- **Warm Off-White Canvas & White Card**: Positioned the login form inside a focused white container (`bg-white max-w-[420px]`) centered over the platform's warm off-white canvas (`#faf8f5`), creating a calm, distraction-free environment.
+- **Moderate Rounded Corners & Thin Border**: Replaced heavy `rounded-3xl` radii with clean, moderate `rounded-2xl` corners on the main card container, framed by a thin light-grey border (`border border-stone-200`).
+- **Subtle Shadow Elevation**: Replaced harsh drop shadows with a refined soft elevation (`shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]`) that separates the card smoothly from the background.
+- **Readable Typography**: Sized headings to `text-2xl font-bold tracking-tight text-stone-900`, form labels to `text-sm font-medium text-stone-800`, input text to `text-sm`, and inline validation warnings to clear `text-xs font-medium` for superior legibility.
+- **CodeForge Purple Subtle Accents**: Retained CodeForge's signature purple/violet branding via the header terminal logo (`from-primary-600 via-violet-600 to-secondary-500`), subtle version pill (`bg-violet-50 text-violet-700 border-violet-200/60`), refined focus rings (`focus:ring-violet-500/20 focus:border-violet-600`), and interactive link hover transitions (`hover:text-violet-600`).
+- **Charcoal Text & Elegant Normal Button Styling**: Applied deep charcoal text tokens (`text-stone-900` / `text-stone-800`) paired with an elegant, classic primary sign-in button (`bg-stone-900 hover:bg-stone-800 text-white font-semibold shadow-sm`) and a clean white Google button (`border border-stone-200 bg-white hover:bg-stone-50 text-stone-700`).
+
+### 2. Viewport & Scroll Optimization
+- **Zero Desktop Scrolling**: Removed rigid `h-[calc(100vh-4rem)]` and `sm:overflow-hidden` constraints. The card and balanced spacing (`py-6 sm:py-8`) naturally occupy ~500–560px vertical height, comfortably fitting within standard desktop screens (1080p, 1440p, 768p laptop displays) without generating any page scrollbars.
+- **Unclipped Mobile Rendering**: On smaller mobile screens or mobile landscape orientations, the page scrolls smoothly through standard document flow without clipping any input fields, buttons, or navigation links.
+
+### 3. Preserved Logic & Functionality
+- **Auth Integrity**: Full retention of email & password inputs, React Icons (`FiMail`, `FiLock`, `FiEye`, `FiEyeOff`, `FiCheck`, `FiAlertCircle`, `FiLoader`, `FiArrowRight`, `FcGoogle`), password show/hide toggle, real-time validation, `isLoading` states with inline spinner, Google sign-in workflow, error notifications, session detection, and existing route navigation (`/register`, `/admin/login`, `/`).
+- **Zero Mock Credentials**: Strictly maintained the "zero fake operational data" principle with no demo logins or simulated successes.
+- **Build Verification**: Executed `npm run build` in `frontend/` with 0 errors.
+
+---
+
+## 21. Unified Navbar, Login & Registration Design Polish
+
+### 1. Architectural Design System Alignment
+- **Cohesive Surface & Palette**: Standardized Navbar, Student Login, and Registration on the warm off-white canvas (`#faf8f5`), pure white card surfaces (`#ffffff`), subtle 1px light-grey boundaries (`border border-stone-200`), and charcoal typography (`text-stone-900` / `text-stone-800`), creating a unified, professional brand experience.
+- **Restrained CodeForge Purple Accent**: Maintained violet/purple accents (`violet-600` / `violet-700`) as deliberate brand touches across the header terminal mark, version pills, active navigation underlines, input focus rings (`focus:ring-violet-500/20`), and primary CTA buttons.
+
+### 2. Navbar Refinements
+- **Fixed & Responsive Foundation**: Built a sticky header (`sticky top-0 z-50 w-full`) with light cream background (`bg-[#faf8f5]/95 backdrop-blur-md border-b border-stone-200/90`).
+- **Typography & Proportions**: Enlarged logo brand mark to `w-10 h-10` with `FiTerminal`, increased brand text to `text-xl font-bold`, and bumped navigation font size to `text-sm font-medium`.
+- **Navigation Links & Icons**: Added uncluttered React Icons (`FiHome`, `FiBookOpen`, `FiCode`, `FiTerminal`, `FiInfo`) alongside links for Home (`/`), Learn (`/learn`), Practice (`/practice`), Debug Arena (`/debug-arena`), and About (`/#about`).
+- **Active & Focus States**: Implemented clean active route indicator (`text-violet-700 font-semibold after:h-[2px] after:bg-violet-600 after:bottom-0 after:rounded-full`), smooth text-color hovers, and accessible keyboard focus outlines (`focus-visible:ring-2 focus-visible:ring-violet-500/40`), discarding oversized pill borders and neon glows.
+- **Balanced Action Controls**: Paired a restrained purple primary action for Get Started (`bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm shadow-sm`) with a neutral secondary action for Sign In (`text-stone-700 hover:bg-stone-200/50 text-sm font-medium`).
+
+### 3. Login Page Refinements
+- **Proportions & Spacing**: Maintained centered white `max-w-[420px]` card with moderate `rounded-2xl` corners, soft elevation, and balanced vertical spacing (`space-y-4` to `space-y-5`).
+- **Input Styling**: Ensured crisp pure-white input fields (`bg-white border-stone-200 text-stone-900`), removing heavy grey fills, with prominent `focus:ring-violet-500/20` focus rings.
+- **Auth Integrity**: Full preservation of email/password fields, show/hide password toggle, generic error responses (`Invalid email or password.`), Google OAuth trigger, and zero test credentials.
+
+### 4. Registration Page Refinements
+- **Identical Visual Tokens**: Mirrored the Login page's card geometry, white inputs, subtle borders, typography, and button system across the 4 required fields (Name, Email, Password, Confirm Password).
+- **Responsive Viewport Fitting**: Replaced rigid `h-[calc(100vh-4rem)]` with `py-6 sm:py-8` fluid container, preventing vertical clipping or scrolling on normal desktop viewports while enabling natural, unclipped scrolling on mobile viewports.
+- **Validation & Flow**: Preserved 2–50 character name validation, RFC email regex, 8+ character password check, password confirmation matching, and Google Sign-Up workflow.
+
+---
+
+## 22. Full-Site Navigation Architecture & Scroll-Spy Verification
+
+### 1. Section ID Schema & Smooth Scrolling Architecture
+- **Section ID Anchors on HomePage**: Added unique, non-colliding IDs and scroll margins (`scroll-mt-24`) to every destination on `HomePage.jsx`:
+  - `home` (`#home`): Top Hero section and platform introduction.
+  - `learn` (`#learn`): Structured curriculum tracks covering Core Languages (Python, JavaScript, C++, Java, C) and Full-Stack Web Development.
+  - `practice` (`#practice`): Interactive Problem Solving preview (Two Sum algorithmic challenge and execution specs).
+  - `debug-arena` (`#debug-arena`): Practical engineering bug diagnosis preview (Loop boundary out-of-bounds error).
+  - `about` (`#about`): Core platform philosophy, deterministic evaluation, and verified progress.
+- **Smooth Scroll Execution**:
+  - When already on `/`, clicking any navigation link invokes `scrollIntoView({ behavior: 'smooth', block: 'start' })` (or `window.scrollTo({ top: 0, behavior: 'smooth' })` for Home), updates the active indicator instantly, and synchronizes the browser address bar with `window.history.pushState`.
+  - When on another route (such as `/login` or `/register`), clicking a section link navigates to `/#${sectionId}`. The mounted page listens for the hash via `useEffect` and smoothly scrolls directly to the corresponding target element.
+
+### 2. Browser Back/Forward & Direct URL Access
+- **Popstate Synchronization**: Registered a `popstate` event listener in `Navbar.jsx`. When the user navigates using the browser's Back or Forward buttons, the system inspects the incoming hash and smoothly scrolls to the target section while setting the corresponding active state.
+- **Direct URL & Refresh Resilience**: Entering `http://localhost:5173/#learn`, `/#practice`, `/#debug-arena`, or `/#about` directly in the browser address bar or refreshing the page immediately scrolls to the target anchor once DOM elements are rendered.
+
+### 3. Dynamic Scroll-Spy & Active State Tracking
+- **Home Isolation**: Completely eliminated the bug where Home remained permanently active on all pages and positions.
+- **Real-Time Viewport Spy**: Implemented a passive scroll listener computing section vertical offsets relative to the viewport (`scrollY + 180px threshold`). As the student or visitor scrolls through the landing page, the purple indicator line (`after:h-[2px] after:bg-violet-600`) dynamically transfers to the visible section (Home &rarr; Learn &rarr; Practice &rarr; Debug Arena &rarr; About).
+- **Route Segregation**: When browsing away from `/` to `/login` or `/register`, all section active indicators are cleared.
+
+### 4. Verification & Integrity Results
+- **Automated Verification Script (`testNavigation.js`)**: Verified 100% presence of all 5 section IDs (`home`, `learn`, `practice`, `debug-arena`, `about`), zero duplicate IDs, exact mapping between Navbar links and section targets, and active event handlers.
+- **Frontend Build**: Verified with `npm run build` exiting with code 0 (1984 modules transformed).
+- **Backend Test Suite**: Verified with `npm test` passing 68/68 automated tests (100% pass rate).
+
+
+
+
+

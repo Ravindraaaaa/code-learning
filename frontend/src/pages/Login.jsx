@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  CheckCircle2,
-  ArrowRight,
-  Terminal,
-  ShieldCheck,
-  LogOut,
-  LayoutDashboard,
-  Shield,
-  User,
-  Zap,
-} from 'lucide-react';
+  FiMail,
+  FiLock,
+  FiEye,
+  FiEyeOff,
+  FiArrowRight,
+  FiCheck,
+  FiAlertCircle,
+  FiShield,
+  FiLogOut,
+  FiTerminal,
+  FiLoader,
+  FiInfo,
+} from 'react-icons/fi';
+import { FcGoogle } from 'react-icons/fc';
 import { ROUTES } from '../routes/paths.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Button } from '../components/common/Button.jsx';
-import { Input } from '../components/common/Input.jsx';
-import { Card } from '../components/common/Card.jsx';
-import { Alert } from '../components/common/Alert.jsx';
-import { Badge } from '../components/common/Badge.jsx';
+import { APP_CONFIG } from '../utils/constants.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -29,7 +25,7 @@ export const Login = ({ initialRole = 'student' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, token, isAuthenticated, login, loginAdmin, logout } = useAuth();
+  const { user, isAuthenticated, login, loginAdmin, logout } = useAuth();
 
   const roleParam = searchParams.get('role');
   const [selectedRole, setSelectedRole] = useState(
@@ -41,90 +37,71 @@ export const Login = ({ initialRole = 'student' }) => {
     password: '',
   });
 
-  const [fieldErrors, setFieldErrors] = useState({});
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const [generalError, setGeneralError] = useState('');
+  const [oauthNotice, setOauthNotice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // If redirected from a protected route, determine destination
+  const isAdmin = selectedRole === 'admin';
+
+  // Determine post-login destination
   const redirectPath =
     location.state?.from?.pathname ||
-    (selectedRole === 'admin' ? ROUTES.ADMIN : ROUTES.DASHBOARD);
+    (isAdmin ? ROUTES.ADMIN : ROUTES.DASHBOARD);
   const wasRedirected = Boolean(location.state?.from);
 
   useEffect(() => {
     if (roleParam === 'admin') {
       setSelectedRole('admin');
+    } else if (initialRole) {
+      setSelectedRole(initialRole);
     }
-  }, [roleParam]);
+  }, [roleParam, initialRole]);
 
-  const validateForm = () => {
-    const errors = {};
+  // Real-time validation computation
+  const isEmailEmpty = !formData.email.trim();
+  const isEmailValidFormat = !isEmailEmpty && EMAIL_REGEX.test(formData.email.trim());
+  const showEmailError = emailTouched && !isEmailEmpty && !isEmailValidFormat;
+  const showEmailEmptyError = emailTouched && isEmailEmpty;
+  const showEmailSuccess = emailTouched && isEmailValidFormat;
 
-    if (!formData.email.trim()) {
-      errors.email = `${selectedRole === 'admin' ? 'Administrator' : 'Student'} email is required`;
-    } else if (!EMAIL_REGEX.test(formData.email.trim())) {
-      errors.email = 'Please provide a valid email address';
-    }
+  const showPasswordEmptyError = passwordTouched && !formData.password;
 
-    if (!formData.password) {
-      errors.password = 'Password is required';
-    }
-
-    return errors;
+  const handleEmailChange = (e) => {
+    const val = e.target.value;
+    setFormData((prev) => ({ ...prev, email: val }));
+    if (!emailTouched) setEmailTouched(true);
+    if (generalError) setGeneralError('');
+    if (oauthNotice) setOauthNotice('');
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (fieldErrors[name]) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
-    if (generalError) {
-      setGeneralError('');
-    }
-  };
-
-  const fillDemoCredentials = (role) => {
-    if (role === 'admin') {
-      setFormData({
-        email: 'admin@codeforge.dev',
-        password: 'Admin@123',
-      });
-      setSelectedRole('admin');
-    } else {
-      setFormData({
-        email: 'student@codeforge.dev',
-        password: 'Student@123',
-      });
-      setSelectedRole('student');
-    }
-    setFieldErrors({});
-    setGeneralError('');
+  const handlePasswordChange = (e) => {
+    const val = e.target.value;
+    setFormData((prev) => ({ ...prev, password: val }));
+    if (!passwordTouched) setPasswordTouched(true);
+    if (generalError) setGeneralError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setGeneralError('');
+    setOauthNotice('');
+    setEmailTouched(true);
+    setPasswordTouched(true);
 
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
-      setFieldErrors(validationErrors);
+    if (!formData.email.trim() || !EMAIL_REGEX.test(formData.email.trim())) {
+      return;
+    }
+    if (!formData.password) {
       return;
     }
 
     setIsLoading(true);
-    setFieldErrors({});
 
     try {
-      if (selectedRole === 'admin') {
+      if (isAdmin) {
         await loginAdmin({
           email: formData.email.trim(),
           password: formData.password,
@@ -138,313 +115,371 @@ export const Login = ({ initialRole = 'student' }) => {
         navigate(redirectPath, { replace: true });
       }
     } catch (err) {
-      if (err.errors && typeof err.errors === 'object') {
-        setFieldErrors(err.errors);
+      // Security rule: Never expose whether the email exists or password alone is wrong
+      if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+        setGeneralError(
+          'Unable to connect to CodeForge API. Please ensure the backend server is running on port 5000.'
+        );
+      } else if (err.status === 403) {
+        setGeneralError(
+          isAdmin
+            ? 'Access denied. Administrator credentials required.'
+            : 'Access denied. Student credentials required.'
+        );
+      } else {
+        setGeneralError('Invalid email or password.');
       }
-      setGeneralError(err.message || 'Login failed. Invalid credentials or insufficient permissions.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleGoogleSignIn = () => {
+    setGeneralError('');
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    if (!googleClientId) {
+      setOauthNotice(
+        'Google Sign-In is not configured. Please supply VITE_GOOGLE_CLIENT_ID in your environment to enable Google authentication.'
+      );
+      return;
+    }
+
+    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/google/callback`);
+    const scope = encodeURIComponent('openid profile email');
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+  };
+
   const handleLogout = () => {
     logout();
     setFormData({ email: '', password: '' });
+    setEmailTouched(false);
+    setPasswordTouched(false);
   };
 
-  // AUTHENTICATED RESULT VIEW (User Already Logged In)
+  // =========================================================================
+  // AUTHENTICATED RESULT VIEW (User Already Signed In)
+  // =========================================================================
   if (isAuthenticated && user) {
     const isAdminUser = user.role === 'admin';
 
     return (
-      <div className="max-w-md mx-auto py-12 px-4">
-        <Card className={`text-center p-8 sm:p-10 space-y-6 shadow-surface-lg ${isAdminUser ? 'border-amber-500/30' : 'border-violet-500/20'}`}>
-          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-surface-sm ${
-            isAdminUser ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
-          }`}>
-            {isAdminUser ? <Shield className="w-8 h-8 stroke-[2]" /> : <CheckCircle2 className="w-8 h-8 stroke-[2]" />}
+      <div className="w-full flex items-center justify-center px-4 py-6 sm:py-8">
+        <div className="w-full max-w-[420px] bg-white rounded-2xl border border-stone-200 p-7 sm:p-8 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] space-y-5 text-center">
+          <div
+            className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto ${
+              isAdminUser
+                ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+            }`}
+          >
+            {isAdminUser ? (
+              <FiShield className="w-6 h-6" />
+            ) : (
+              <FiCheck className="w-6 h-6" />
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Badge variant={isAdminUser ? 'warning' : 'success'}>
+          <div className="space-y-1">
+            <span
+              className={`inline-block text-xs font-mono font-semibold uppercase px-2.5 py-0.5 rounded-full ${
+                isAdminUser
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
               {isAdminUser ? 'Administrator Session' : 'Student Session'}
-            </Badge>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-content-primary">
-              Welcome back, {user.name}!
-            </h2>
-            <p className="text-sm text-slate-600 dark:text-content-muted">
-              You are currently authenticated as a verified CodeForge <span className="font-semibold">{user.role}</span>.
+            </span>
+            <h1 className="text-xl font-bold tracking-tight text-stone-900">
+              Welcome back, {user.name}
+            </h1>
+            <p className="text-xs text-stone-500">
+              Authenticated as <span className="font-medium text-stone-700">{user.email}</span>
             </p>
           </div>
 
-          {/* Authentication Token & User Details */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-surface-elevated/70 border border-slate-200 dark:border-border-subtle text-left text-xs font-mono space-y-2.5">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500 dark:text-content-muted">Account:</span>
-              <span className="font-semibold text-slate-900 dark:text-content-primary">{user.name}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500 dark:text-content-muted">Email:</span>
-              <span className="text-slate-800 dark:text-content-secondary">{user.email}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500 dark:text-content-muted">Role:</span>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                isAdminUser
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                  : 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20'
-              }`}>
-                {user.role}
-              </span>
-            </div>
-            {token && (
-              <div className="pt-2 border-t border-slate-200 dark:border-border-subtle space-y-1">
-                <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-slate-500 dark:text-content-muted flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>JWT Session:</span>
-                  </span>
-                  <span className="text-emerald-500 font-bold">Active & Verified</span>
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="pt-2 flex flex-col gap-2.5">
-            {isAdminUser ? (
-              <>
-                <Link to={ROUTES.ADMIN} className="w-full">
-                  <Button variant="primary" size="md" className="w-full gap-2 shadow-glow-primary bg-amber-600 hover:bg-amber-500">
-                    <Shield className="w-4 h-4" />
-                    <span>Go to Admin Portal</span>
-                  </Button>
-                </Link>
-                <Link to={ROUTES.DASHBOARD} className="w-full">
-                  <Button variant="outline" size="md" className="w-full gap-2">
-                    <LayoutDashboard className="w-4 h-4" />
-                    <span>View Student Dashboard</span>
-                  </Button>
-                </Link>
-              </>
-            ) : (
-              <Link to={ROUTES.DASHBOARD} className="w-full">
-                <Button variant="primary" size="md" className="w-full gap-2 shadow-glow-primary">
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>Go to Student Dashboard</span>
-                </Button>
-              </Link>
-            )}
+            <Link to={isAdminUser ? ROUTES.ADMIN : ROUTES.DASHBOARD} className="w-full">
+              <button
+                type="button"
+                className="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+              >
+                <span>Go to {isAdminUser ? 'Admin Portal' : 'Student Dashboard'}</span>
+                <FiArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
 
-            <Button
-              variant="outline"
-              size="md"
+            <button
+              type="button"
               onClick={handleLogout}
-              className="w-full gap-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/20 border-rose-200 dark:border-rose-900/30"
+              className="w-full py-2.5 px-4 rounded-xl border border-stone-200 bg-white hover:bg-rose-50 text-stone-600 hover:text-rose-600 text-sm font-medium transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
             >
-              <LogOut className="w-4 h-4" />
+              <FiLogOut className="w-4 h-4" />
               <span>Sign Out</span>
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
       </div>
     );
   }
 
-  // LOGIN FORM VIEW
-  const isAdmin = selectedRole === 'admin';
-
+  // =========================================================================
+  // MAIN LOGIN VIEW (Warm Off-White Canvas with Clean White Login Card)
+  // =========================================================================
   return (
-    <div className="max-w-md mx-auto py-8 px-4 animate-fade-in">
-      <Card className="p-8 sm:p-10 shadow-surface-lg border-slate-200 dark:border-border-subtle space-y-6">
-        {/* Header Icon & Title */}
-        <div className="text-center space-y-2">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto shadow-surface-sm text-white mb-3 transition-colors ${
-            isAdmin
-              ? 'bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-700'
-              : 'bg-gradient-to-tr from-primary-600 via-violet-600 to-secondary-500'
-          }`}>
-            {isAdmin ? <Shield className="w-6 h-6 stroke-[2.5]" /> : <Terminal className="w-6 h-6 stroke-[2.5]" />}
-          </div>
+    <div className="w-full flex items-center justify-center px-4 py-6 sm:py-8">
+      <div className="w-full max-w-[420px] bg-white rounded-2xl border border-stone-200 p-6 sm:p-7 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] space-y-4 sm:space-y-4.5 transition-all">
+        {/* Brand Header */}
+        <div className="text-center space-y-1">
+          <Link
+            to={ROUTES.HOME}
+            className="inline-flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 rounded-xl mb-1"
+            aria-label="CodeForge Home"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 via-violet-600 to-secondary-500 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+              <FiTerminal className="w-5 h-5 text-white stroke-[2.5]" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold tracking-tight text-stone-900">
+                {APP_CONFIG.name}
+              </span>
+              <span className="text-xs font-mono font-medium text-violet-700 bg-violet-100/70 border border-violet-200/80 px-2 py-0.5 rounded-md">
+                v{APP_CONFIG.version}
+              </span>
+            </div>
+          </Link>
 
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-content-primary">
-            Sign In to CodeForge
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+            {isAdmin ? 'Administrator Sign In' : 'Welcome back'}
           </h1>
-
-          <p className="text-xs text-slate-500 dark:text-content-muted">
+          <p className="text-sm text-stone-500 leading-normal max-w-xs mx-auto">
             {isAdmin
-              ? 'Administrator portal credentials required.'
-              : 'Enter your student credentials to continue your coding journey.'}
+              ? 'Enter administrative credentials to manage platform systems.'
+              : 'Sign in to your student account to continue learning.'}
           </p>
         </div>
 
-        {/* Unified Role Switcher Tab (Student vs Admin) */}
-        <div className="flex p-1 bg-slate-100 dark:bg-surface-elevated rounded-xl border border-slate-200 dark:border-border-subtle">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedRole('student');
-              setGeneralError('');
-              setFieldErrors({});
-            }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${
-              !isAdmin
-                ? 'bg-white dark:bg-violet-600 text-slate-900 dark:text-white shadow-surface-sm'
-                : 'text-slate-500 hover:text-slate-900 dark:text-content-muted dark:hover:text-content-primary'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>Student Portal</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedRole('admin');
-              setGeneralError('');
-              setFieldErrors({});
-            }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${
-              isAdmin
-                ? 'bg-white dark:bg-amber-600 text-slate-900 dark:text-white shadow-surface-sm'
-                : 'text-slate-500 hover:text-slate-900 dark:text-content-muted dark:hover:text-content-primary'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>Admin Portal</span>
-          </button>
-        </div>
-
-        {/* Quick Demo Fill Buttons */}
-        <div className="pt-1">
-          {isAdmin ? (
-            <button
-              type="button"
-              onClick={() => fillDemoCredentials('admin')}
-              className="w-full py-1.5 px-3 rounded-lg border border-dashed border-amber-300 dark:border-amber-700/50 bg-amber-50/50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 text-xs font-mono flex items-center justify-center gap-2 hover:bg-amber-100/50 transition-colors"
-              title="Click to automatically fill demo admin credentials"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <span>Auto-Fill Demo Admin (admin@codeforge.dev)</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fillDemoCredentials('student')}
-              className="w-full py-1.5 px-3 rounded-lg border border-dashed border-violet-300 dark:border-violet-700/50 bg-violet-50/50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300 text-xs font-mono flex items-center justify-center gap-2 hover:bg-violet-100/50 transition-colors"
-              title="Click to automatically fill demo student credentials"
-            >
-              <Zap className="w-3.5 h-3.5 text-violet-500" />
-              <span>Auto-Fill Demo Student (student@codeforge.dev)</span>
-            </button>
-          )}
-        </div>
-
-        {/* Protected route redirect notification */}
+        {/* Redirect Notice if routed from protected guard */}
         {wasRedirected && (
-          <Alert variant="warning" title="Authentication Required">
-            You must be signed in as a {isAdmin ? 'system administrator' : 'student'} to access this protected area.
-          </Alert>
+          <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-800 text-xs sm:text-sm flex items-center gap-2.5">
+            <FiInfo className="w-4 h-4 shrink-0 text-amber-600" />
+            <span>Please sign in to access the requested page.</span>
+          </div>
         )}
 
-        {/* Global Error Alert */}
+        {/* Generic Error Notice (never leaks account existence) */}
         {generalError && (
-          <Alert variant="error" title="Authentication Error" dismissible onDismiss={() => setGeneralError('')}>
-            {generalError}
-          </Alert>
+          <div
+            role="alert"
+            className="p-3 rounded-xl bg-rose-50/90 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-2.5 animate-fade-in"
+          >
+            <FiAlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+            <span className="flex-1 leading-snug">{generalError}</span>
+          </div>
+        )}
+
+        {/* OAuth Notice */}
+        {oauthNotice && (
+          <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-stone-700 text-xs sm:text-sm flex items-start gap-2.5">
+            <FiInfo className="w-4 h-4 shrink-0 text-stone-500 mt-0.5" />
+            <span className="flex-1 leading-snug">{oauthNotice}</span>
+          </div>
         )}
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          {/* Email Address */}
-          <Input
-            id="login-email"
-            name="email"
-            type="email"
-            label={isAdmin ? 'Administrator Email' : 'Email Address'}
-            placeholder={isAdmin ? 'admin@codeforge.dev' : 'student@codeforge.dev'}
-            icon={Mail}
-            value={formData.email}
-            onChange={handleChange}
-            error={fieldErrors.email}
-            disabled={isLoading}
-            autoComplete="email"
-            required
-          />
+        <form onSubmit={handleSubmit} className="space-y-3.5" noValidate>
+          {/* Email Field with Real-Time Validation Indicators */}
+          <div className="space-y-1.5 text-left">
+            <label
+              htmlFor="login-email"
+              className="block text-sm font-medium text-stone-800"
+            >
+              {isAdmin ? 'Administrator Email' : 'Email Address'}
+            </label>
+            <div className="relative flex items-center">
+              <div className="absolute left-3.5 pointer-events-none text-stone-400">
+                <FiMail className="w-4 h-4" />
+              </div>
+              <input
+                id="login-email"
+                type="email"
+                value={formData.email}
+                onChange={handleEmailChange}
+                onBlur={() => setEmailTouched(true)}
+                disabled={isLoading}
+                placeholder={isAdmin ? 'admin@codeforge.dev' : 'student@example.com'}
+                autoComplete="email"
+                required
+                className={`w-full rounded-xl bg-white border text-sm pl-10 pr-10 py-2.5 text-stone-900 placeholder-stone-400 transition-all focus:outline-none focus:ring-2 ${
+                  showEmailError || showEmailEmptyError
+                    ? 'border-rose-400 focus:ring-rose-400/20 focus:border-rose-500'
+                    : showEmailSuccess
+                    ? 'border-emerald-500 focus:ring-emerald-500/20 focus:border-emerald-600'
+                    : 'border-stone-200 hover:border-stone-300 focus:ring-violet-500/20 focus:border-violet-600'
+                }`}
+              />
+              {/* Right validation state icon */}
+              <div className="absolute right-3.5 pointer-events-none">
+                {showEmailSuccess && (
+                  <FiCheck className="w-4 h-4 text-emerald-600" />
+                )}
+                {(showEmailError || showEmailEmptyError) && (
+                  <FiAlertCircle className="w-4 h-4 text-rose-500" />
+                )}
+              </div>
+            </div>
 
-          {/* Password with Visibility Toggle */}
-          <div className="relative">
-            <Input
-              id="login-password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              label="Password"
-              placeholder={isAdmin ? 'Enter admin password' : 'Enter your password'}
-              icon={Lock}
-              value={formData.password}
-              onChange={handleChange}
-              error={fieldErrors.password}
-              disabled={isLoading}
-              autoComplete="current-password"
-              trailing={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-content-primary focus:outline-none"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              }
-              required
-            />
+            {/* Inline validation messages */}
+            {showEmailEmptyError && (
+              <p className="text-xs text-rose-600 font-medium">
+                {isAdmin ? 'Administrator email is required.' : 'Student email is required.'}
+              </p>
+            )}
+            {showEmailError && (
+              <p className="text-xs text-rose-600 font-medium">
+                Enter a valid email address.
+              </p>
+            )}
           </div>
 
-          {/* Submit Button */}
-          <Button
+          {/* Password Field with Show/Hide Toggle */}
+          <div className="space-y-1.5 text-left">
+            <label
+              htmlFor="login-password"
+              className="block text-sm font-medium text-stone-800"
+            >
+              Password
+            </label>
+            <div className="relative flex items-center">
+              <div className="absolute left-3.5 pointer-events-none text-stone-400">
+                <FiLock className="w-4 h-4" />
+              </div>
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handlePasswordChange}
+                onBlur={() => setPasswordTouched(true)}
+                disabled={isLoading}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                required
+                className={`w-full rounded-xl bg-white border text-sm pl-10 pr-10 py-2.5 text-stone-900 placeholder-stone-400 transition-all focus:outline-none focus:ring-2 ${
+                  showPasswordEmptyError
+                    ? 'border-rose-400 focus:ring-rose-400/20 focus:border-rose-500'
+                    : 'border-stone-200 hover:border-stone-300 focus:ring-violet-500/20 focus:border-violet-600'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3.5 text-stone-400 hover:text-stone-700 focus:outline-none transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <FiEyeOff className="w-4 h-4" />
+                ) : (
+                  <FiEye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+            {showPasswordEmptyError && (
+              <p className="text-xs text-rose-600 font-medium">
+                Password is required.
+              </p>
+            )}
+          </div>
+
+          {/* Primary Submit Button */}
+          <button
             type="submit"
-            variant="primary"
-            size="md"
-            isLoading={isLoading}
             disabled={isLoading}
-            className={`w-full mt-2 shadow-glow-primary gap-2 ${isAdmin ? 'bg-amber-600 hover:bg-amber-500' : ''}`}
+            className="w-full mt-1 py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-violet-500/30"
           >
-            <span>
-              {isLoading
-                ? (isAdmin ? 'Verifying Admin Authority...' : 'Signing In...')
-                : (isAdmin ? 'Sign In as Administrator' : 'Sign In as Student')}
-            </span>
-            {!isLoading && <ArrowRight className="w-4 h-4" />}
-          </Button>
+            {isLoading ? (
+              <>
+                <FiLoader className="w-4 h-4 animate-spin shrink-0" />
+                <span>Signing in&hellip;</span>
+              </>
+            ) : (
+              <>
+                <span>{isAdmin ? 'Sign in as Administrator' : 'Sign in'}</span>
+                <FiArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
         </form>
 
-        {/* Footer Navigation */}
-        <div className="pt-4 border-t border-slate-100 dark:border-border-subtle text-center text-xs text-slate-500 dark:text-content-muted space-y-2">
+        {/* Google Sign-In (Student Portal only) */}
+        {!isAdmin && (
+          <div className="space-y-3 pt-0.5">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-stone-200" />
+              </div>
+              <span className="relative bg-white px-3 text-xs text-stone-400 uppercase tracking-wider font-medium">
+                or continue with
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-900 text-sm font-medium transition-all shadow-sm active:scale-[0.99] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              aria-label="Continue with Google"
+            >
+              <FcGoogle className="w-4 h-4" />
+              <span>Continue with Google</span>
+            </button>
+          </div>
+        )}
+
+        {/* Footer Navigation Links */}
+        <div className="pt-2.5 border-t border-stone-100 text-center text-sm text-stone-600 space-y-2">
           {!isAdmin ? (
             <div>
-              <span>Don't have an account? </span>
+              <span>Don&apos;t have an account? </span>
               <Link
                 to={ROUTES.REGISTER}
-                className="font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+                className="font-semibold text-stone-900 hover:text-violet-600 transition-colors"
               >
-                Register as Student
+                Create student account
               </Link>
             </div>
           ) : (
-            <p className="text-[11px] text-slate-400 font-mono">
-              🛡️ Admin portal requires elevated credentials.
-            </p>
+            <div>
+              <span>Student? </span>
+              <Link
+                to={ROUTES.LOGIN}
+                className="font-semibold text-stone-900 hover:text-violet-600 transition-colors"
+              >
+                Return to student portal
+              </Link>
+            </div>
+          )}
+
+          {!isAdmin && (
+            <div>
+              <Link
+                to={ROUTES.ADMIN_LOGIN}
+                className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+              >
+                Administrator portal &rarr;
+              </Link>
+            </div>
           )}
 
           <div>
             <Link
               to={ROUTES.HOME}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-content-primary text-[11px]"
+              className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
             >
-              ← Return to Platform Home
+              &larr; Return to platform home
             </Link>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

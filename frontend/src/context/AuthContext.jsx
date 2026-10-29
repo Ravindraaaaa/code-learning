@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { loginUser, loginAdmin as loginAdminApi, getAuthProfile } from '../services/api.js';
+import { loginUser, loginAdmin as loginAdminApi, googleLogin as googleLoginApi, getAuthProfile } from '../services/api.js';
 import { getStoredAuth, setStoredAuth, clearStoredAuth, isTokenExpired } from '../utils/auth.js';
 
 const AuthContext = createContext(null);
@@ -103,6 +103,18 @@ export const AuthProvider = ({ children }) => {
     return { user: loggedInUser, token: authToken };
   };
 
+  // Google Login handler
+  const loginGoogle = async (googlePayload) => {
+    const response = await googleLoginApi(googlePayload);
+    const { user: loggedInUser, token: authToken } = response.data;
+
+    setStoredAuth({ user: loggedInUser, token: authToken });
+    setUser(loggedInUser);
+    setToken(authToken);
+
+    return { user: loggedInUser, token: authToken };
+  };
+
   // Logout handler
   const logout = () => {
     clearStoredAuth();
@@ -122,6 +134,7 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     login,
     loginAdmin,
+    loginGoogle,
     logout,
     refreshSession: initializeAuth,
   };

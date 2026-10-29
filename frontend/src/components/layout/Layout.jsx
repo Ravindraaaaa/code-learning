@@ -42,11 +42,29 @@ export const Layout = ({ children }) => {
     return <StudentLayout>{children}</StudentLayout>;
   }
 
-  // Otherwise, render Public platform shell with sticky top navbar and footer
+  const isHomePage = location.pathname === '/';
+  const isAuthPage =
+    location.pathname === '/login' ||
+    location.pathname === '/register' ||
+    location.pathname === '/admin/login';
+
+  // On authentication pages, render warm cream background with navbar and no oversized footer
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#faf8f5] text-stone-900 selection:bg-violet-500 selection:text-white transition-colors">
+        <Navbar />
+        <main className="flex-1 w-full flex items-center justify-center">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // Otherwise, render standard Public platform shell
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-background text-slate-900 dark:text-content-primary selection:bg-violet-500 selection:text-white transition-colors duration-fast">
+    <div className="min-h-screen flex flex-col bg-background-deep text-content-primary selection:bg-violet-500 selection:text-white transition-colors duration-fast">
       <Navbar />
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main className={`flex-1 w-full ${isHomePage ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12'}`}>
         {children}
       </main>
       <Footer />

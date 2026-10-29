@@ -15,5 +15,9 @@ export const config = {
   },
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY || null,
-  }
+  },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || null,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || null,
+  },
 };

@@ -62,6 +62,13 @@ export const loginAdmin = async ({ email, password }) => {
   });
 };
 
+export const googleLogin = async (payload) => {
+  return request('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
 export const getAuthProfile = async (customToken = null) => {
   const headers = customToken ? { Authorization: `Bearer ${customToken}` } : {};
   return request('/auth/me', {

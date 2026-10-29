@@ -1,4 +1,10 @@
-import { registerStudent, loginStudent, loginAdmin, getStudentProfile } from '../services/authService.js';
+import {
+  registerStudent,
+  loginStudent,
+  loginAdmin,
+  getStudentProfile,
+  loginWithGoogle,
+} from '../services/authService.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 
 export const register = async (req, res, next) => {
@@ -49,6 +55,22 @@ export const adminLogin = async (req, res, next) => {
   }
 };
 
+export const googleLogin = async (req, res, next) => {
+  try {
+    const { credential, token, email, name, googleId } = req.body;
+    const authResult = await loginWithGoogle({ credential, token, email, name, googleId });
+
+    return sendSuccess(
+      res,
+      200,
+      'Google authentication successful',
+      authResult
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getMe = async (req, res, next) => {
   try {
     const user = await getStudentProfile(req.user.id);
@@ -63,4 +85,3 @@ export const getMe = async (req, res, next) => {
     next(error);
   }
 };
-

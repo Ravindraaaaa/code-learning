@@ -29,6 +29,7 @@ import { ThemePreviewPage } from '../pages/ThemePreviewPage.jsx';
 import { Register } from '../pages/Register.jsx';
 import { Login } from '../pages/Login.jsx';
 import { AdminLogin } from '../pages/AdminLogin.jsx';
+import { GoogleCallback } from '../pages/GoogleCallback.jsx';
 import { Dashboard } from '../pages/Dashboard.jsx';
 import { Learn } from '../pages/Learn.jsx';
 import Practice from '../pages/Practice.jsx';
@@ -72,6 +73,12 @@ export const routeConfig = [
     title: 'Admin Authentication',
     type: 'Public',
     element: <AdminLogin />,
+  },
+  {
+    path: ROUTES.GOOGLE_CALLBACK,
+    title: 'Google Authentication',
+    type: 'Public',
+    element: <GoogleCallback />,
   },
   {
     path: ROUTES.THEME_PREVIEW,

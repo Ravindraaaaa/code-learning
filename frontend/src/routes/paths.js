@@ -8,6 +8,7 @@ export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
   ADMIN_LOGIN: '/admin/login',
+  GOOGLE_CALLBACK: '/auth/google/callback',
   THEME_PREVIEW: '/theme-preview',
 
   // Student Application Routes

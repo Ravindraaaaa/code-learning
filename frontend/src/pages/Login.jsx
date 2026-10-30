@@ -25,7 +25,7 @@ export const Login = ({ initialRole = 'student' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isAuthenticated, login, loginAdmin, logout } = useAuth();
+  const { user, isAuthenticated, login, loginAdmin, logout, loginGoogle } = useAuth();
 
   const roleParam = searchParams.get('role');
   const [selectedRole, setSelectedRole] = useState(
@@ -134,13 +134,30 @@ export const Login = ({ initialRole = 'student' }) => {
     }
   };
 
+  const handleDemoGoogleLogin = async () => {
+    setIsLoading(true);
+    setGeneralError('');
+    try {
+      await loginGoogle({
+        email: 'google.student@codeforge.dev',
+        name: 'Google Student Demo',
+        googleId: 'demo_google_student_id',
+      });
+      navigate(redirectPath, { replace: true });
+    } catch (err) {
+      setGeneralError(err.message || 'Google demo sign-in failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = () => {
     setGeneralError('');
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     if (!googleClientId) {
       setOauthNotice(
-        'Google Sign-In is not configured. Please supply VITE_GOOGLE_CLIENT_ID in your environment to enable Google authentication.'
+        'Google OAuth Client ID is not configured in .env yet. You can sign in instantly using the Google Demo Account below, or provide VITE_GOOGLE_CLIENT_ID in your .env file.'
       );
       return;
     }
@@ -278,13 +295,59 @@ export const Login = ({ initialRole = 'student' }) => {
           </div>
         )}
 
-        {/* OAuth Notice */}
+        {/* OAuth Notice with Demo Login Option */}
         {oauthNotice && (
-          <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-stone-700 text-xs sm:text-sm flex items-start gap-2.5">
-            <FiInfo className="w-4 h-4 shrink-0 text-stone-500 mt-0.5" />
-            <span className="flex-1 leading-snug">{oauthNotice}</span>
+          <div className="p-3.5 rounded-xl bg-violet-50/90 border border-violet-200 text-violet-900 text-xs sm:text-sm space-y-2.5 animate-fade-in">
+            <div className="flex items-start gap-2.5">
+              <FiInfo className="w-4 h-4 shrink-0 text-violet-600 mt-0.5" />
+              <span className="flex-1 leading-snug">{oauthNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleDemoGoogleLogin}
+              disabled={isLoading}
+              className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-xs transition-colors shadow-sm"
+            >
+              <FcGoogle className="w-4 h-4" />
+              <span>Sign in with Google Student Demo</span>
+            </button>
           </div>
         )}
+
+        {/* Quick Demo Fill Helper */}
+        <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/90 text-xs text-stone-600 space-y-2">
+          <div className="flex items-center justify-between text-stone-500 font-medium">
+            <span>Quick Test Accounts:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedRole('student');
+                setFormData({ email: 'student@test.com', password: 'password123' });
+                setEmailTouched(true);
+                setPasswordTouched(true);
+                setGeneralError('');
+              }}
+              className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 hover:border-violet-300 hover:text-violet-700 text-stone-700 font-medium transition-colors shadow-2xs"
+            >
+              Student: <span className="font-mono text-stone-900">student@test.com</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedRole('admin');
+                setFormData({ email: 'admin@codeforge.dev', password: 'Admin@123' });
+                setEmailTouched(true);
+                setPasswordTouched(true);
+                setGeneralError('');
+              }}
+              className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 hover:border-violet-300 hover:text-violet-700 text-stone-700 font-medium transition-colors shadow-2xs"
+            >
+              Admin: <span className="font-mono text-stone-900">admin@codeforge.dev</span>
+            </button>
+          </div>
+        </div>
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-3.5" noValidate>
@@ -307,7 +370,7 @@ export const Login = ({ initialRole = 'student' }) => {
                 onChange={handleEmailChange}
                 onBlur={() => setEmailTouched(true)}
                 disabled={isLoading}
-                placeholder={isAdmin ? 'admin@codeforge.dev' : 'student@example.com'}
+                placeholder={isAdmin ? 'admin@codeforge.dev' : 'student@test.com'}
                 autoComplete="email"
                 required
                 className={`w-full rounded-xl bg-white border text-sm pl-10 pr-10 py-2.5 text-stone-900 placeholder-stone-400 transition-all focus:outline-none focus:ring-2 ${
@@ -361,7 +424,7 @@ export const Login = ({ initialRole = 'student' }) => {
                 onChange={handlePasswordChange}
                 onBlur={() => setPasswordTouched(true)}
                 disabled={isLoading}
-                placeholder="Enter your password"
+                placeholder="••••••••"
                 autoComplete="current-password"
                 required
                 className={`w-full rounded-xl bg-white border text-sm pl-10 pr-10 py-2.5 text-stone-900 placeholder-stone-400 transition-all focus:outline-none focus:ring-2 ${
@@ -372,9 +435,10 @@ export const Login = ({ initialRole = 'student' }) => {
               />
               <button
                 type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3.5 text-stone-400 hover:text-stone-700 focus:outline-none transition-colors"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-3 text-stone-400 hover:text-stone-600 transition-colors p-1"
               >
                 {showPassword ? (
                   <FiEyeOff className="w-4 h-4" />
@@ -383,6 +447,7 @@ export const Login = ({ initialRole = 'student' }) => {
                 )}
               </button>
             </div>
+
             {showPasswordEmptyError && (
               <p className="text-xs text-rose-600 font-medium">
                 Password is required.
@@ -390,20 +455,20 @@ export const Login = ({ initialRole = 'student' }) => {
             )}
           </div>
 
-          {/* Primary Submit Button */}
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full mt-1 py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+            disabled={isLoading || isEmailEmpty || !formData.password}
+            className="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 active:bg-black text-white text-sm font-semibold transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-stone-900 focus:outline-none focus:ring-2 focus:ring-violet-500/30 pt-1"
           >
             {isLoading ? (
               <>
-                <FiLoader className="w-4 h-4 animate-spin shrink-0" />
-                <span>Signing in&hellip;</span>
+                <FiLoader className="w-4 h-4 animate-spin text-white" />
+                <span>Signing in...</span>
               </>
             ) : (
               <>
-                <span>{isAdmin ? 'Sign in as Administrator' : 'Sign in'}</span>
+                <span>Sign in</span>
                 <FiArrowRight className="w-4 h-4" />
               </>
             )}

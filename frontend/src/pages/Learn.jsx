@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../routes/paths.js';
 import {
   Compass,
   CheckCircle2,
@@ -68,6 +70,7 @@ const MODULE_CONFIGS = {
 
 export const Learn = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tracks, setTracks] = useState([]);
   const [enrolledTrack, setEnrolledTrack] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -359,11 +362,40 @@ export const Learn = () => {
                       keySkills: [],
                     };
                     const Icon = conf.icon;
+                    const isHtmlModule = mod.slug === 'html';
+                    const isCssModule = mod.slug === 'css';
+                    const isJsModule = mod.slug === 'javascript';
+                    const isReactModule = mod.slug === 'react';
+                    const isInteractiveModule = isHtmlModule || isCssModule;
 
                     return (
                       <div
                         key={mod.slug}
-                        className="p-5 rounded-2xl border border-border-subtle bg-surface-elevated/40 hover:border-violet-500/40 hover:bg-surface-elevated/70 transition-all flex flex-col justify-between space-y-4 group"
+                        onClick={() => {
+                          if (isHtmlModule) {
+                            navigate(ROUTES.HTML_LESSON);
+                          } else if (isCssModule) {
+                            navigate(ROUTES.CSS_LESSON);
+                          } else if (isJsModule) {
+                            navigate(ROUTES.JAVASCRIPT_LESSON);
+                          } else if (isReactModule) {
+                            navigate(ROUTES.REACT_LESSON);
+                          }
+                        }}
+                        className={`
+                          p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 group
+                          ${
+                            isHtmlModule
+                              ? 'border-orange-500/40 bg-gradient-to-b from-surface-elevated/70 to-surface/90 hover:border-orange-500/80 hover:shadow-glow-orange cursor-pointer hover:-translate-y-0.5'
+                              : isCssModule
+                              ? 'border-blue-500/40 bg-gradient-to-b from-surface-elevated/70 to-surface/90 hover:border-blue-500/80 hover:shadow-glow-blue cursor-pointer hover:-translate-y-0.5'
+                              : isJsModule
+                              ? 'border-amber-500/40 bg-gradient-to-b from-surface-elevated/70 to-surface/90 hover:border-amber-500/80 cursor-pointer hover:-translate-y-0.5'
+                              : isReactModule
+                              ? 'border-cyan-500/40 bg-gradient-to-b from-surface-elevated/70 to-surface/90 hover:border-cyan-500/80 cursor-pointer hover:-translate-y-0.5'
+                              : 'border-border-subtle bg-surface-elevated/40'
+                          }
+                        `}
                       >
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
@@ -374,9 +406,31 @@ export const Learn = () => {
                                 <Icon className={`w-5 h-5 ${conf.iconColor}`} />
                               </div>
                               <div>
-                                <span className="text-[10px] font-mono font-bold text-violet-400">
-                                  MODULE {mod.order}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-mono font-bold text-violet-400">
+                                    MODULE {mod.order}
+                                  </span>
+                                  {isHtmlModule && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                                      Active
+                                    </span>
+                                  )}
+                                  {isCssModule && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                      Active
+                                    </span>
+                                  )}
+                                  {isJsModule && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                      Active
+                                    </span>
+                                  )}
+                                  {isReactModule && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
                                 <h4 className="font-bold text-base text-content-primary">
                                   {mod.name}
                                 </h4>
@@ -410,9 +464,85 @@ export const Learn = () => {
                           </div>
                         </div>
 
-                        <div className="pt-2 border-t border-border-subtle/60 flex items-center justify-between text-xs font-mono text-content-muted">
-                          <span>{mod.level}</span>
-                          <span>~{mod.estimatedHours}h estimated</span>
+                        <div className="pt-2 border-t border-border-subtle/60 flex items-center justify-between text-xs font-mono">
+                          {isHtmlModule ? (
+                            <>
+                              <span className="text-orange-400 font-semibold flex items-center gap-1">
+                                <span>10 Core Topics</span>
+                              </span>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(ROUTES.HTML_LESSON);
+                                }}
+                                className="text-xs py-1.5 px-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs"
+                              >
+                                <span>Open Lessons</span>
+                                <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                              </Button>
+                            </>
+                          ) : isCssModule ? (
+                            <>
+                              <span className="text-blue-400 font-semibold flex items-center gap-1">
+                                <span>18 Core Topics</span>
+                              </span>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(ROUTES.CSS_LESSON);
+                                }}
+                                className="text-xs py-1.5 px-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-xs"
+                              >
+                                <span>Open Lessons</span>
+                                <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                              </Button>
+                            </>
+                          ) : isJsModule ? (
+                            <>
+                              <span className="text-amber-400 font-semibold flex items-center gap-1">
+                                <span>16 Core Topics</span>
+                              </span>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(ROUTES.JAVASCRIPT_LESSON);
+                                }}
+                                className="text-xs py-1.5 px-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-semibold shadow-xs"
+                              >
+                                <span>Open Lessons</span>
+                                <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                              </Button>
+                            </>
+                          ) : isReactModule ? (
+                            <>
+                              <span className="text-cyan-400 font-semibold flex items-center gap-1">
+                                <span>36 Core Topics + Capstone</span>
+                              </span>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(ROUTES.REACT_LESSON);
+                                }}
+                                className="text-xs py-1.5 px-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-slate-950 font-semibold shadow-xs"
+                              >
+                                <span>Open Lessons</span>
+                                <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-content-muted">{mod.level}</span>
+                              <span className="text-content-subtle font-mono">Upcoming in Track</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     );

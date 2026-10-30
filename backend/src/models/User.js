@@ -47,6 +47,7 @@ const userSchema = new mongoose.Schema(
       totalTopics: { type: Number, default: 0 },
       percentage: { type: Number, default: 0 },
       lastCompletedTopic: { type: String, default: null },
+      completedTopicsList: [{ type: String }],
     },
     streak: {
       currentStreak: { type: Number, default: 0 },

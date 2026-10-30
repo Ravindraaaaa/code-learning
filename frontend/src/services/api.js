@@ -85,6 +85,19 @@ export const verifyAdminAccess = async (customToken = null) => {
   });
 };
 
+export const getStudentTopicProgress = async () => {
+  return request('/student/topics/progress', {
+    method: 'GET',
+  });
+};
+
+export const completeStudentTopic = async ({ topicSlug, topicTitle, moduleSlug = 'html' }) => {
+  return request('/student/topics/complete', {
+    method: 'POST',
+    body: JSON.stringify({ topicSlug, topicTitle, moduleSlug }),
+  });
+};
+
 export const getStudentDashboard = async () => {
   return request('/student/dashboard', {
     method: 'GET',

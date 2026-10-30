@@ -44,6 +44,20 @@ const seedUsers = async () => {
     );
     logger.info('Student account seeded: student@codeforge.dev / Student@123');
 
+    const testStudentHash = await bcrypt.hash('password123', 10);
+    await User.findOneAndUpdate(
+      { email: 'student@test.com' },
+      {
+        name: 'Test Student',
+        email: 'student@test.com',
+        passwordHash: testStudentHash,
+        role: 'student',
+        selectedLanguage: null,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    logger.info('Test Student account seeded: student@test.com / password123');
+
     logger.info('User seeding completed successfully.');
   } catch (err) {
     logger.error('Failed to seed users:', err.message);

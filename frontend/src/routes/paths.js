@@ -14,6 +14,10 @@ export const ROUTES = {
   // Student Application Routes
   DASHBOARD: '/dashboard',
   LEARN: '/learn',
+  HTML_LESSON: '/learn/html',
+  CSS_LESSON: '/learn/css',
+  JAVASCRIPT_LESSON: '/learn/javascript',
+  REACT_LESSON: '/learn/react',
   PRACTICE: '/practice',
   DEBUG_ARENA: '/debug-arena',
   TESTS: '/tests',

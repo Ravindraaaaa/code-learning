@@ -57,8 +57,8 @@ export const adminLogin = async (req, res, next) => {
 
 export const googleLogin = async (req, res, next) => {
   try {
-    const { credential, token, email, name, googleId } = req.body;
-    const authResult = await loginWithGoogle({ credential, token, email, name, googleId });
+    const { credential, token, email, name, googleId, code, redirectUri } = req.body;
+    const authResult = await loginWithGoogle({ credential, token, email, name, googleId, code, redirectUri });
 
     return sendSuccess(
       res,
@@ -73,7 +73,7 @@ export const googleLogin = async (req, res, next) => {
 
 export const getMe = async (req, res, next) => {
   try {
-    const user = await getStudentProfile(req.user.id);
+    const user = await getStudentProfile(req.user.id, req.user.email);
 
     return sendSuccess(
       res,

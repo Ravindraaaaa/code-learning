@@ -13,11 +13,18 @@ export const GoogleCallback = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const handleCallback = async () => {
       try {
         const searchParams = new URLSearchParams(location.search);
         const code = searchParams.get('code');
         const token = searchParams.get('token') || searchParams.get('id_token');
+        const errorParam = searchParams.get('error');
+
+        if (errorParam) {
+          throw new Error(`Google returned an error: ${errorParam}`);
+        }
 
         // Also check hash for implicit grant
         const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
@@ -29,14 +36,29 @@ export const GoogleCallback = () => {
           throw new Error('No authentication credential received from Google.');
         }
 
-        await loginGoogle({ credential, code: code || undefined, token: token || hashToken || undefined });
-        navigate(ROUTES.DASHBOARD, { replace: true });
+        const redirectUri = `${window.location.origin}/auth/google/callback`;
+        await loginGoogle({
+          credential,
+          code: code || undefined,
+          token: token || hashToken || undefined,
+          redirectUri,
+        });
+
+        if (isMounted) {
+          navigate(ROUTES.DASHBOARD, { replace: true });
+        }
       } catch (err) {
-        setError(err.message || 'Failed to authenticate with Google. Please try again.');
+        if (isMounted) {
+          setError(err.message || 'Failed to authenticate with Google. Please try again.');
+        }
       }
     };
 
     handleCallback();
+
+    return () => {
+      isMounted = false;
+    };
   }, [location, loginGoogle, navigate]);
 
   return (

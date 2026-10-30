@@ -2,28 +2,45 @@ import { User } from '../models/index.js';
 import { isDBConnected } from '../config/db.js';
 
 /**
- * Retrieve real database-driven dashboard metrics for an authenticated student.
- * If fields have not been populated yet, returns 0s and empty arrays.
- * Strictly adheres to "Never create fake statistics".
+ * Retrieve authentic database-driven dashboard metrics for an authenticated student.
+ * Real learning progress, completed topics, assessment results, and streaks only
+ * when supported by actual records. Zero fabricated statistics or hardcoded recommendations.
  *
  * @param {string} userId - Authenticated user MongoDB ObjectId
  * @returns {Promise<Object>} Real dashboard metrics
  */
-export const getStudentDashboardData = async (userId) => {
+export const getStudentDashboardData = async (userId, userEmail = null) => {
   if (!isDBConnected()) {
     const error = new Error('Database service is currently unavailable. Please verify MongoDB is running.');
     error.statusCode = 503;
     throw error;
   }
 
-  const user = await User.findById(userId);
+  let user = null;
+  if (userId) {
+    try {
+      user = await User.findById(userId);
+    } catch {
+      user = null;
+    }
+  }
+
+  // Resilient secondary lookup: verified email claim from authenticated JWT
+  if (!user && userEmail) {
+    try {
+      user = await User.findOne({ email: String(userEmail).toLowerCase().trim() });
+    } catch {
+      user = null;
+    }
+  }
+
   if (!user) {
     const error = new Error('Student account not found');
     error.statusCode = 404;
     throw error;
   }
 
-  // 1. Current Roadmap (null if not enrolled)
+  // 1. Current Roadmap (Real database records only, strictly scoped to this student)
   const roadmap =
     user.roadmap && user.roadmap.enrolled
       ? {
@@ -36,15 +53,15 @@ export const getStudentDashboardData = async (userId) => {
         }
       : null;
 
-  // 2. Learning Progress (genuine counts, 0 if fresh)
+  // 2. Real Learning Progress & Completed Topics (0 if fresh / no records)
   const learningProgress = {
     topicsCompleted: Number(user.learningProgress?.topicsCompleted) || 0,
     totalTopics: Number(user.learningProgress?.totalTopics) || 0,
-    percentage: Number(user.learningProgress?.percentage) || 0,
+    percentage: Math.min(Number(user.learningProgress?.percentage) || 0, 100),
     lastCompletedTopic: user.learningProgress?.lastCompletedTopic || null,
   };
 
-  // 3. Streak Metrics (real consecutive days, 0 if none)
+  // 3. Authentic Streak Metrics (strictly real counts, 0 if fresh)
   const streak = {
     currentStreak: Number(user.streak?.currentStreak) || 0,
     longestStreak: Number(user.streak?.longestStreak) || 0,
@@ -52,46 +69,54 @@ export const getStudentDashboardData = async (userId) => {
     freezeDaysAvailable: Number(user.streak?.freezeDaysAvailable) || 0,
   };
 
-  // 4. Skill Progress (empty array if no skills evaluated yet)
+  // 4. Real Verified Skills (Only include skills with actual records, empty array if none)
   const skills = Array.isArray(user.skills)
-    ? user.skills.map((s) => ({
-        name: s.name,
-        level: s.level || 'Unrated',
-        score: Number(s.score) || 0,
-        problemsSolved: Number(s.problemsSolved) || 0,
+    ? user.skills
+        .filter((s) => s && (Number(s.problemsSolved) > 0 || Number(s.score) > 0 || (s.level && s.level !== 'Unrated')))
+        .map((s) => ({
+          name: s.name,
+          level: s.level || 'Unrated',
+          score: Number(s.score) || 0,
+          problemsSolved: Number(s.problemsSolved) || 0,
+        }))
+    : [];
+
+  // 5. Authentic Test Performance (strictly real records, 0 if fresh)
+  const testsTaken = Number(user.testPerformance?.testsTaken) || 0;
+  const recentTests = Array.isArray(user.testPerformance?.recentTests)
+    ? user.testPerformance.recentTests.map((t) => ({
+        testId: t.testId,
+        title: t.title,
+        score: Number(t.score) || 0,
+        maxScore: Number(t.maxScore) || 0,
+        date: t.date || new Date(),
       }))
     : [];
 
-  // 5. Test Performance (0s if no tests taken yet)
   const testPerformance = {
-    testsTaken: Number(user.testPerformance?.testsTaken) || 0,
-    averageScore: Number(user.testPerformance?.averageScore) || 0,
-    highestScore: Number(user.testPerformance?.highestScore) || 0,
+    testsTaken,
+    averageScore: testsTaken > 0 ? Number(user.testPerformance?.averageScore) || 0 : 0,
+    highestScore: testsTaken > 0 ? Number(user.testPerformance?.highestScore) || 0 : 0,
     lastTestDate: user.testPerformance?.lastTestDate || null,
-    recentTests: Array.isArray(user.testPerformance?.recentTests)
-      ? user.testPerformance.recentTests.map((t) => ({
-          testId: t.testId,
-          title: t.title,
-          score: Number(t.score) || 0,
-          maxScore: Number(t.maxScore) || 0,
-          date: t.date || new Date(),
-        }))
-      : [],
+    recentTests,
   };
 
-  // 6. Recent Activity (empty array if no activities recorded yet)
+  // 6. Recent Activity (Only genuine records for this student, empty array if none)
   const recentActivity = Array.isArray(user.recentActivity)
-    ? user.recentActivity.map((a) => ({
-        activityType: a.activityType,
-        title: a.title,
-        detail: a.detail || '',
-        timestamp: a.timestamp || new Date(),
-      }))
+    ? user.recentActivity
+        .filter((a) => a && a.title)
+        .map((a) => ({
+          activityType: a.activityType,
+          title: a.title,
+          detail: a.detail || '',
+          timestamp: a.timestamp || new Date(),
+        }))
     : [];
 
-  // 7. Contextual Recommendations (derived from genuine student database state)
+  // 7. Contextual Recommendations (Strictly derived from genuine gaps, NO fabricated recommendations)
   const recommendations = [];
 
+  // Only recommend enrollment if student genuinely has no roadmap
   if (!roadmap) {
     recommendations.push({
       id: 'rec-roadmap',
@@ -104,6 +129,7 @@ export const getStudentDashboardData = async (userId) => {
     });
   }
 
+  // Only recommend initial practice if student has 0 assessed skills
   if (skills.length === 0) {
     recommendations.push({
       id: 'rec-practice',
@@ -116,6 +142,7 @@ export const getStudentDashboardData = async (userId) => {
     });
   }
 
+  // Only recommend diagnostic test if student has taken 0 tests
   if (testPerformance.testsTaken === 0) {
     recommendations.push({
       id: 'rec-diagnostic',
@@ -128,15 +155,7 @@ export const getStudentDashboardData = async (userId) => {
     });
   }
 
-  recommendations.push({
-    id: 'rec-debug',
-    title: 'Explore the Debug Arena',
-    description: 'Practice spotting runtime bugs, logic flaws, and time complexity traps in broken algorithms.',
-    actionUrl: '/debug-arena',
-    actionLabel: 'Enter Arena',
-    tag: 'Interactive',
-    priority: 'low',
-  });
+  // Zero hardcoded / fabricated static recommendations (unconditional rec-debug removed)
 
   return {
     student: {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   FiUser,
   FiMail,
@@ -17,10 +17,14 @@ import { FcGoogle } from 'react-icons/fc';
 import { registerUser } from '../services/api.js';
 import { ROUTES } from '../routes/paths.js';
 import { APP_CONFIG } from '../utils/constants.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const Register = () => {
+  const navigate = useNavigate();
+  const { login, loginGoogle } = useAuth();
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -98,17 +102,44 @@ export const Register = () => {
         password: formData.password,
       });
 
-      setRegisteredUser(response.data);
+      // Auto login so student doesn't have to re-enter credentials
+      try {
+        await login({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
+        navigate(ROUTES.DASHBOARD, { replace: true });
+        return;
+      } catch {
+        setRegisteredUser(response.data);
+      }
     } catch (err) {
       if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
         setGeneralError(
           'Unable to connect to CodeForge API. Please ensure the backend server is running on port 5000.'
         );
       } else if (err.status === 409) {
-        setGeneralError('An account with this email address already exists.');
+        setGeneralError('An account with this email address already exists. Please sign in instead.');
       } else {
         setGeneralError(err.message || 'Registration failed. Please check your information.');
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoGoogleSignUp = async () => {
+    setIsLoading(true);
+    setGeneralError('');
+    try {
+      await loginGoogle({
+        email: 'google.student@codeforge.dev',
+        name: 'Google Student Demo',
+        googleId: 'demo_google_student_id',
+      });
+      navigate(ROUTES.DASHBOARD, { replace: true });
+    } catch (err) {
+      setGeneralError(err.message || 'Google demo sign-up failed.');
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +151,7 @@ export const Register = () => {
 
     if (!googleClientId) {
       setOauthNotice(
-        'Google Sign-Up is not configured. Please supply VITE_GOOGLE_CLIENT_ID in your environment to enable Google authentication.'
+        'Google OAuth Client ID is not configured in .env yet. You can sign up instantly using the Google Demo Account below, or provide VITE_GOOGLE_CLIENT_ID in your .env file.'
       );
       return;
     }
@@ -180,15 +211,6 @@ export const Register = () => {
                 <FiArrowRight className="w-4 h-4" />
               </button>
             </Link>
-
-            <Link to={ROUTES.HOME} className="w-full">
-              <button
-                type="button"
-                className="w-full py-2.5 px-4 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 text-sm font-medium transition-all"
-              >
-                Return to Platform Home
-              </button>
-            </Link>
           </div>
         </div>
       </div>
@@ -196,16 +218,16 @@ export const Register = () => {
   }
 
   // =========================================================================
-  // MAIN REGISTRATION VIEW (Warm Off-White Canvas with Clean White Card)
+  // MAIN REGISTRATION VIEW
   // =========================================================================
   return (
     <div className="w-full flex items-center justify-center px-4 py-6 sm:py-8">
-      <div className="w-full max-w-[420px] bg-white rounded-2xl border border-stone-200 p-6 sm:p-7 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] space-y-3.5 transition-all">
+      <div className="w-full max-w-[420px] bg-white rounded-2xl border border-stone-200 p-6 sm:p-7 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] space-y-4 sm:space-y-4.5 transition-all">
         {/* Brand Header */}
         <div className="text-center space-y-1">
           <Link
             to={ROUTES.HOME}
-            className="inline-flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 rounded-xl mb-0.5"
+            className="inline-flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 rounded-xl mb-1"
             aria-label="CodeForge Home"
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 via-violet-600 to-secondary-500 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
@@ -222,10 +244,10 @@ export const Register = () => {
           </Link>
 
           <h1 className="text-2xl font-bold tracking-tight text-stone-900">
-            Create Student Account
+            Create student account
           </h1>
           <p className="text-sm text-stone-500 leading-normal max-w-xs mx-auto">
-            Start learning programming, practicing code, and tracking progress.
+            Join thousands of developers mastering algorithmic challenges and system architecture.
           </p>
         </div>
 
@@ -240,11 +262,22 @@ export const Register = () => {
           </div>
         )}
 
-        {/* OAuth Setup Notice */}
+        {/* OAuth Setup Notice with Instant Demo Option */}
         {oauthNotice && (
-          <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-stone-700 text-xs sm:text-sm flex items-start gap-2.5">
-            <FiInfo className="w-4 h-4 shrink-0 text-stone-500 mt-0.5" />
-            <span className="flex-1 leading-snug">{oauthNotice}</span>
+          <div className="p-3.5 rounded-xl bg-violet-50/90 border border-violet-200 text-violet-900 text-xs sm:text-sm space-y-2.5 animate-fade-in">
+            <div className="flex items-start gap-2.5">
+              <FiInfo className="w-4 h-4 shrink-0 text-violet-600 mt-0.5" />
+              <span className="flex-1 leading-snug">{oauthNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleDemoGoogleSignUp}
+              disabled={isLoading}
+              className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-xs transition-colors shadow-sm"
+            >
+              <FcGoogle className="w-4 h-4" />
+              <span>Sign up with Google Student Demo</span>
+            </button>
           </div>
         )}
 
@@ -270,7 +303,7 @@ export const Register = () => {
                 onChange={handleChange}
                 onBlur={() => handleBlur('name')}
                 disabled={isLoading}
-                placeholder="John Doe"
+                placeholder="Alex Student"
                 autoComplete="name"
                 required
                 className={`w-full rounded-xl bg-white border text-sm pl-10 pr-10 py-2.5 text-stone-900 placeholder-stone-400 transition-all focus:outline-none focus:ring-2 ${
@@ -304,7 +337,7 @@ export const Register = () => {
               htmlFor="register-email"
               className="block text-sm font-medium text-stone-800"
             >
-              Student Email
+              Email Address
             </label>
             <div className="relative flex items-center">
               <div className="absolute left-3.5 pointer-events-none text-stone-400">
@@ -318,7 +351,7 @@ export const Register = () => {
                 onChange={handleChange}
                 onBlur={() => handleBlur('email')}
                 disabled={isLoading}
-                placeholder="student@example.com"
+                placeholder="student@test.com"
                 autoComplete="email"
                 required
                 className={`w-full rounded-xl bg-white border text-sm pl-10 pr-10 py-2.5 text-stone-900 placeholder-stone-400 transition-all focus:outline-none focus:ring-2 ${
@@ -342,17 +375,17 @@ export const Register = () => {
               <p className="text-xs text-rose-600 font-medium">Email address is required.</p>
             )}
             {showEmailError && (
-              <p className="text-xs text-rose-600 font-medium">Enter a valid email address.</p>
+              <p className="text-xs text-rose-600 font-medium">Please enter a valid email address.</p>
             )}
           </div>
 
-          {/* Password Field */}
+          {/* Password */}
           <div className="space-y-1 text-left">
             <label
               htmlFor="register-password"
               className="block text-sm font-medium text-stone-800"
             >
-              Password <span className="font-normal text-stone-500 text-xs">(min. 8 characters)</span>
+              Password
             </label>
             <div className="relative flex items-center">
               <div className="absolute left-3.5 pointer-events-none text-stone-400">
@@ -366,7 +399,7 @@ export const Register = () => {
                 onChange={handleChange}
                 onBlur={() => handleBlur('password')}
                 disabled={isLoading}
-                placeholder="Create a strong password"
+                placeholder="Min. 8 characters"
                 autoComplete="new-password"
                 required
                 className={`w-full rounded-xl bg-white border text-sm pl-10 pr-10 py-2.5 text-stone-900 placeholder-stone-400 transition-all focus:outline-none focus:ring-2 ${
@@ -379,9 +412,10 @@ export const Register = () => {
               />
               <button
                 type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3.5 text-stone-400 hover:text-stone-700 focus:outline-none transition-colors"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-3 text-stone-400 hover:text-stone-600 transition-colors p-1"
               >
                 {showPassword ? (
                   <FiEyeOff className="w-4 h-4" />
@@ -390,12 +424,15 @@ export const Register = () => {
                 )}
               </button>
             </div>
+            {touched.password && isPasswordEmpty && (
+              <p className="text-xs text-rose-600 font-medium">Password is required.</p>
+            )}
             {touched.password && isPasswordTooShort && (
               <p className="text-xs text-rose-600 font-medium">Password must be at least 8 characters long.</p>
             )}
           </div>
 
-          {/* Confirm Password Field */}
+          {/* Confirm Password */}
           <div className="space-y-1 text-left">
             <label
               htmlFor="register-confirm-password"
@@ -415,7 +452,7 @@ export const Register = () => {
                 onChange={handleChange}
                 onBlur={() => handleBlur('confirmPassword')}
                 disabled={isLoading}
-                placeholder="Re-enter your password"
+                placeholder="Confirm your password"
                 autoComplete="new-password"
                 required
                 className={`w-full rounded-xl bg-white border text-sm pl-10 pr-10 py-2.5 text-stone-900 placeholder-stone-400 transition-all focus:outline-none focus:ring-2 ${
@@ -440,16 +477,22 @@ export const Register = () => {
             )}
           </div>
 
-          {/* Primary Submit Button */}
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full mt-1.5 py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20"
+            disabled={
+              isLoading ||
+              !isNameValid ||
+              !isEmailValidFormat ||
+              !isPasswordValid ||
+              formData.password !== formData.confirmPassword
+            }
+            className="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 active:bg-black text-white text-sm font-semibold transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/30 mt-2"
           >
             {isLoading ? (
               <>
-                <FiLoader className="w-4 h-4 animate-spin shrink-0" />
-                <span>Creating account&hellip;</span>
+                <FiLoader className="w-4 h-4 animate-spin text-white" />
+                <span>Creating account...</span>
               </>
             ) : (
               <>

@@ -24,11 +24,16 @@ router.post('/track', requireAuth, selectTrack);
 router.put('/track', requireAuth, selectTrack);
 
 import { getProgress, getHeatmap } from '../controllers/progressController.js';
+import { completeTopic, getTopicProgress } from '../controllers/topicProgressController.js';
 
 // GET /api/v1/student/progress
 router.get('/progress', requireAuth, getProgress);
 
 // GET /api/v1/student/heatmap
 router.get('/heatmap', requireAuth, getHeatmap);
+
+// Authentic Topic Progress & Completion Tracking
+router.get('/topics/progress', requireAuth, getTopicProgress);
+router.post('/topics/complete', requireAuth, completeTopic);
 
 export default router;

@@ -32,6 +32,10 @@ import { AdminLogin } from '../pages/AdminLogin.jsx';
 import { GoogleCallback } from '../pages/GoogleCallback.jsx';
 import { Dashboard } from '../pages/Dashboard.jsx';
 import { Learn } from '../pages/Learn.jsx';
+import { HtmlLessonPage } from '../pages/HtmlLessonPage.jsx';
+import { CssLessonPage } from '../pages/CssLessonPage.jsx';
+import { JavascriptLessonPage } from '../pages/JavascriptLessonPage.jsx';
+import { ReactLessonPage } from '../pages/ReactLessonPage.jsx';
 import Practice from '../pages/Practice.jsx';
 import DebugArena from '../pages/DebugArena.jsx';
 import Tests from '../pages/Tests.jsx';
@@ -99,6 +103,30 @@ export const routeConfig = [
     title: 'Learn',
     type: 'Protected',
     element: <Learn />,
+  },
+  {
+    path: ROUTES.HTML_LESSON,
+    title: 'HTML Foundational Module',
+    type: 'Public',
+    element: <HtmlLessonPage />,
+  },
+  {
+    path: ROUTES.CSS_LESSON,
+    title: 'CSS Styling & Responsive Design',
+    type: 'Public',
+    element: <CssLessonPage />,
+  },
+  {
+    path: ROUTES.JAVASCRIPT_LESSON,
+    title: 'JavaScript Core & Modern ES6+',
+    type: 'Public',
+    element: <JavascriptLessonPage />,
+  },
+  {
+    path: ROUTES.REACT_LESSON,
+    title: 'React.js Complete Curriculum',
+    type: 'Public',
+    element: <ReactLessonPage />,
   },
   {
     path: ROUTES.PRACTICE,

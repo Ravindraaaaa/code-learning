@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs';
 import { User } from '../models/index.js';
 import { signToken } from '../utils/jwt.js';
 import { isDBConnected } from '../config/db.js';
+import { config } from '../config/env.js';
+import { logger } from '../utils/logger.js';
 
 export const registerStudent = async ({ name, email, password }) => {
   if (!isDBConnected()) {
@@ -43,9 +45,8 @@ export const loginStudent = async ({ email, password }) => {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  console.log(`[loginStudent DEBUG] Attempting login for email: '${normalizedEmail}'`);
+  logger.info(`[loginStudent] Attempting login for email: '${normalizedEmail}'`);
   const user = await User.findOne({ email: normalizedEmail });
-  console.log(`[loginStudent DEBUG] User.findOne result:`, user ? { id: user._id, email: user.email, role: user.role, hasHash: !!user.passwordHash } : null);
 
   if (!user) {
     // Perform dummy bcrypt comparison to enforce constant-time execution
@@ -123,14 +124,30 @@ export const loginAdmin = async ({ email, password }) => {
   };
 };
 
-export const getUserProfile = async (userId) => {
+export const getUserProfile = async (userId, userEmail = null) => {
   if (!isDBConnected()) {
     const error = new Error('Database service is currently unavailable. Please verify MongoDB is running.');
     error.statusCode = 503;
     throw error;
   }
 
-  const user = await User.findById(userId);
+  let user = null;
+  if (userId) {
+    try {
+      user = await User.findById(userId);
+    } catch {
+      user = null;
+    }
+  }
+
+  if (!user && userEmail) {
+    try {
+      user = await User.findOne({ email: String(userEmail).toLowerCase().trim() });
+    } catch {
+      user = null;
+    }
+  }
+
   if (!user) {
     const error = new Error('User account not found');
     error.statusCode = 404;
@@ -142,7 +159,7 @@ export const getUserProfile = async (userId) => {
 
 export const getStudentProfile = getUserProfile;
 
-export const loginWithGoogle = async ({ credential, token, email, name, googleId }) => {
+export const loginWithGoogle = async ({ credential, token, email, name, googleId, code, redirectUri }) => {
   if (!isDBConnected()) {
     const error = new Error('Database service is currently unavailable. Please verify MongoDB is running.');
     error.statusCode = 503;
@@ -153,24 +170,85 @@ export const loginWithGoogle = async ({ credential, token, email, name, googleId
   let verifiedName = name;
   let verifiedGoogleId = googleId;
 
-  // Verify Google ID token if provided
-  const idToken = credential || token;
-  if (idToken && typeof idToken === 'string') {
+  const clientId = config.google?.clientId || process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = config.google?.clientSecret || process.env.GOOGLE_CLIENT_SECRET;
+
+  // 1. If an authorization code is provided, exchange it for tokens with Google
+  const authCode = code || (credential && typeof credential === 'string' && (credential.startsWith('4/') || !credential.startsWith('ey')) ? credential : null);
+  if (authCode && clientId && clientSecret) {
+    try {
+      const targetRedirectUri = redirectUri || `${config.clientUrl}/auth/google/callback`;
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code: authCode,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: targetRedirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+
+      if (tokenResponse.ok) {
+        const tokenData = await tokenResponse.json();
+        if (tokenData.id_token) {
+          const idRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${tokenData.id_token}`);
+          if (idRes.ok) {
+            const payload = await idRes.json();
+            verifiedEmail = payload.email;
+            verifiedName = payload.name || payload.given_name || payload.email?.split('@')[0];
+            verifiedGoogleId = payload.sub;
+          }
+        }
+        if (!verifiedEmail && tokenData.access_token) {
+          const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${tokenData.access_token}` },
+          });
+          if (userRes.ok) {
+            const payload = await userRes.json();
+            verifiedEmail = payload.email;
+            verifiedName = payload.name || payload.given_name || payload.email?.split('@')[0];
+            verifiedGoogleId = payload.sub;
+          }
+        }
+      } else {
+        const errData = await tokenResponse.json().catch(() => ({}));
+        logger.warn('Google token exchange error: ' + JSON.stringify(errData));
+      }
+    } catch (err) {
+      logger.warn('Google token exchange network error: ' + err.message);
+    }
+  }
+
+  // 2. If ID Token (JWT) is provided directly (e.g. from Google One Tap / GIS)
+  const idToken = (credential && typeof credential === 'string' && credential.startsWith('ey'))
+    ? credential
+    : (token && typeof token === 'string' && token.startsWith('ey') ? token : null);
+
+  if (!verifiedEmail && idToken) {
     try {
       const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
       if (response.ok) {
         const payload = await response.json();
         verifiedEmail = payload.email;
-        verifiedName = payload.name || payload.given_name || payload.email.split('@')[0];
+        verifiedName = payload.name || payload.given_name || payload.email?.split('@')[0];
         verifiedGoogleId = payload.sub;
       }
-    } catch {
-      // Allow graceful fallback to client payload in local/offline environments
+    } catch (err) {
+      logger.warn('Google ID token verification error: ' + err.message);
     }
   }
 
+  // 3. Fallback for demo / development payload
+  if (!verifiedEmail && email) {
+    verifiedEmail = email;
+    verifiedName = name || email.split('@')[0];
+    verifiedGoogleId = googleId || `google_dev_${Date.now()}`;
+  }
+
   if (!verifiedEmail) {
-    const error = new Error('Valid Google account email is required');
+    const error = new Error('Valid Google account authentication is required. Check Google OAuth credentials in .env.');
     error.statusCode = 400;
     throw error;
   }
@@ -197,8 +275,7 @@ export const loginWithGoogle = async ({ credential, token, email, name, googleId
   });
 
   return {
-    user: user.toJSON(),
+    user: user.toJSON ? user.toJSON() : user,
     token: authToken,
   };
 };
-

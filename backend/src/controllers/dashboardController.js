@@ -7,7 +7,7 @@ import { sendSuccess } from '../utils/apiResponse.js';
  */
 export const getDashboard = async (req, res, next) => {
   try {
-    const dashboardData = await getStudentDashboardData(req.user.id);
+    const dashboardData = await getStudentDashboardData(req.user.id, req.user.email);
 
     return sendSuccess(
       res,

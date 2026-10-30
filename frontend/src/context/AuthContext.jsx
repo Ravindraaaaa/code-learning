@@ -34,8 +34,8 @@ export const AuthProvider = ({ children }) => {
           setStoredAuth({ user: response.data, token: stored.token });
         }
       } catch (err) {
-        // If server rejects token as expired or invalid (401), wipe session
-        if (err.status === 401) {
+        // If server rejects token as expired/invalid (401) or account deleted/not found (404), wipe session
+        if (err.status === 401 || err.status === 404) {
           clearStoredAuth();
           setUser(null);
           setToken(null);

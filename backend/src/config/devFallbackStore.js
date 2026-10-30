@@ -181,7 +181,7 @@ const createMockUserDoc = (data) => {
     passwordHash: data.passwordHash,
     role: data.role || 'student',
     roadmap: data.roadmap || null,
-    learningProgress: data.learningProgress || { topicsCompleted: 0, totalTopics: 0, percentage: 0, lastCompletedTopic: null },
+    learningProgress: data.learningProgress || { topicsCompleted: 0, totalTopics: 0, percentage: 0, lastCompletedTopic: null, completedTopicsList: [] },
     streak: data.streak || { currentStreak: 0, longestStreak: 0, lastActiveDate: null, freezeDaysAvailable: 0 },
     skills: data.skills || [],
     testPerformance: data.testPerformance || { testsTaken: 0, averageScore: 0, highestScore: 0, lastTestDate: null, recentTests: [] },
@@ -200,6 +200,7 @@ const createMockUserDoc = (data) => {
   doc.save = async function () {
     this.updatedAt = new Date();
     inMemoryUsers.set(this.email.toLowerCase(), this);
+    if (this._id) inMemoryUsers.set(String(this._id), this);
     return this;
   };
 
@@ -563,8 +564,10 @@ export const activateDevFallbackStore = async (
   // 2. Seed Default Accounts
   const adminHash = bcrypt.hashSync('Admin@123', 10);
   const studentHash = bcrypt.hashSync('Student@123', 10);
+  const testStudentHash = bcrypt.hashSync('password123', 10);
 
   const defaultAdmin = createMockUserDoc({
+    _id: new mongoose.Types.ObjectId('65f1a1a1a1a1a1a1a1a1a100'),
     name: 'CodeForge Administrator',
     email: 'admin@codeforge.dev',
     passwordHash: adminHash,
@@ -574,6 +577,7 @@ export const activateDevFallbackStore = async (
   inMemoryUsers.set(String(defaultAdmin._id), defaultAdmin);
 
   const defaultStudent = createMockUserDoc({
+    _id: new mongoose.Types.ObjectId('65f1a1a1a1a1a1a1a1a1a101'),
     name: 'Alex Student',
     email: 'student@codeforge.dev',
     passwordHash: studentHash,
@@ -582,6 +586,17 @@ export const activateDevFallbackStore = async (
   });
   inMemoryUsers.set('student@codeforge.dev', defaultStudent);
   inMemoryUsers.set(String(defaultStudent._id), defaultStudent);
+
+  const testStudent = createMockUserDoc({
+    _id: new mongoose.Types.ObjectId('65f1a1a1a1a1a1a1a1a1a102'),
+    name: 'Test Student',
+    email: 'student@test.com',
+    passwordHash: testStudentHash,
+    role: 'student',
+    selectedLanguage: null,
+  });
+  inMemoryUsers.set('student@test.com', testStudent);
+  inMemoryUsers.set(String(testStudent._id), testStudent);
 
   // 3. User Model Patches
   const origUserFindOne = User.findOne;
@@ -615,6 +630,7 @@ export const activateDevFallbackStore = async (
   const origUserFindById = User.findById;
   User.findById = function (id, ...args) {
     if (mongoose.connection.readyState === 1 && !fallbackActive) return origUserFindById.call(User, id, ...args);
+    if (!id) return buildSingleChain(null);
     const idStr = String(id);
     for (const user of inMemoryUsers.values()) {
       if (String(user._id) === idStr) {
@@ -671,6 +687,7 @@ export const activateDevFallbackStore = async (
   const origUserFindByIdAndDelete = User.findByIdAndDelete;
   User.findByIdAndDelete = function (id, ...args) {
     if (mongoose.connection.readyState === 1 && !fallbackActive) return origUserFindByIdAndDelete.call(User, id, ...args);
+    if (!id) return buildSingleChain(null);
     const idStr = String(id);
     for (const [key, user] of inMemoryUsers.entries()) {
       if (String(user._id) === idStr) {
@@ -706,6 +723,7 @@ export const activateDevFallbackStore = async (
   const origLanguageFindById = Language.findById;
   Language.findById = function (id, ...args) {
     if (mongoose.connection.readyState === 1 && !fallbackActive) return origLanguageFindById.call(Language, id, ...args);
+    if (!id) return buildSingleChain(null);
     const idStr = String(id);
     const found = inMemoryLanguages.get(idStr);
     return Promise.resolve(found ? createMockLanguageDoc(found) : null);
@@ -723,6 +741,7 @@ export const activateDevFallbackStore = async (
   const origLanguageFindByIdAndDelete = Language.findByIdAndDelete;
   Language.findByIdAndDelete = function (id, ...args) {
     if (mongoose.connection.readyState === 1 && !fallbackActive) return origLanguageFindByIdAndDelete.call(Language, id, ...args);
+    if (!id) return buildSingleChain(null);
     const idStr = String(id);
     inMemoryLanguages.delete(idStr);
     return Promise.resolve({ _id: idStr });
@@ -778,7 +797,8 @@ export const activateDevFallbackStore = async (
     const origTrackFindById = Track.findById;
     Track.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origTrackFindById.call(Track, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const found = inMemoryTracks.get(idStr);
       return Promise.resolve(found ? createMockTrackDoc(found) : null);
     };
@@ -795,7 +815,8 @@ export const activateDevFallbackStore = async (
     const origTrackFindByIdAndDelete = Track.findByIdAndDelete;
     Track.findByIdAndDelete = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origTrackFindByIdAndDelete.call(Track, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       inMemoryTracks.delete(idStr);
       return Promise.resolve({ _id: idStr });
     };
@@ -845,7 +866,8 @@ export const activateDevFallbackStore = async (
     const origTopicFindById = Topic.findById;
     Topic.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origTopicFindById.call(Topic, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const found = inMemoryTopics.get(idStr);
       const doc = found ? createMockTopicDoc(found) : null;
       const singleChain = {
@@ -876,7 +898,8 @@ export const activateDevFallbackStore = async (
     const origTopicFindByIdAndDelete = Topic.findByIdAndDelete;
     Topic.findByIdAndDelete = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origTopicFindByIdAndDelete.call(Topic, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       inMemoryTopics.delete(idStr);
       return Promise.resolve({ _id: idStr });
     };
@@ -899,7 +922,8 @@ export const activateDevFallbackStore = async (
     const origBatchFindById = Batch.findById;
     Batch.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origBatchFindById.call(Batch, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const b = inMemoryBatches.get(idStr);
       return buildSingleChain(b ? createMockBatchDoc(b) : null);
     };
@@ -921,7 +945,8 @@ export const activateDevFallbackStore = async (
     const origBatchFindByIdAndUpdate = Batch.findByIdAndUpdate;
     Batch.findByIdAndUpdate = function (id, update, options, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origBatchFindByIdAndUpdate.call(Batch, id, update, options, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       let b = inMemoryBatches.get(idStr);
       if (b) {
         Object.assign(b, update, { updatedAt: new Date() });
@@ -933,7 +958,8 @@ export const activateDevFallbackStore = async (
     const origBatchFindByIdAndDelete = Batch.findByIdAndDelete;
     Batch.findByIdAndDelete = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origBatchFindByIdAndDelete.call(Batch, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const b = inMemoryBatches.get(idStr);
       inMemoryBatches.delete(idStr);
       return Promise.resolve(b ? createMockBatchDoc(b) : null);
@@ -982,7 +1008,8 @@ export const activateDevFallbackStore = async (
     const origPurchaseFindById = Purchase.findById;
     Purchase.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origPurchaseFindById.call(Purchase, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const p = inMemoryPurchases.get(idStr);
       const doc = p ? createMockPurchaseDoc(p) : null;
       return buildSingleChain(doc);
@@ -1031,7 +1058,8 @@ export const activateDevFallbackStore = async (
     const origLessonFindById = Lesson.findById;
     Lesson.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origLessonFindById.call(Lesson, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const found = inMemoryLessons.get(idStr);
       const doc = found ? createMockLessonDoc(found) : null;
       return buildSingleChain(doc);
@@ -1054,7 +1082,8 @@ export const activateDevFallbackStore = async (
     const origLessonFindByIdAndDelete = Lesson.findByIdAndDelete;
     Lesson.findByIdAndDelete = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origLessonFindByIdAndDelete.call(Lesson, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       inMemoryLessons.delete(idStr);
       return Promise.resolve({ _id: idStr });
     };
@@ -1083,7 +1112,8 @@ export const activateDevFallbackStore = async (
     const origQFindById = AssessmentQuestion.findById;
     AssessmentQuestion.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origQFindById.call(AssessmentQuestion, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const found = inMemoryQuestions.get(idStr);
       const doc = found ? createMockQuestionDoc(found) : null;
       const chain = {
@@ -1113,7 +1143,8 @@ export const activateDevFallbackStore = async (
     const origQFindByIdAndDelete = AssessmentQuestion.findByIdAndDelete;
     AssessmentQuestion.findByIdAndDelete = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origQFindByIdAndDelete.call(AssessmentQuestion, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       inMemoryQuestions.delete(idStr);
       return Promise.resolve({ _id: idStr });
     };
@@ -1132,7 +1163,8 @@ export const activateDevFallbackStore = async (
     const origDCFindById = DebugChallenge.findById;
     DebugChallenge.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origDCFindById.call(DebugChallenge, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const found = inMemoryDebugChallenges.get(idStr);
       const doc = found ? createMockDebugChallengeDoc(found) : null;
       const chain = {
@@ -1159,7 +1191,8 @@ export const activateDevFallbackStore = async (
     const origDCFindByIdAndDelete = DebugChallenge.findByIdAndDelete;
     DebugChallenge.findByIdAndDelete = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origDCFindByIdAndDelete.call(DebugChallenge, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       inMemoryDebugChallenges.delete(idStr);
       return Promise.resolve({ _id: idStr });
     };
@@ -1178,7 +1211,8 @@ export const activateDevFallbackStore = async (
     const origWTFindById = WeeklyTest.findById;
     WeeklyTest.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origWTFindById.call(WeeklyTest, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const found = inMemoryWeeklyTests.get(idStr);
       const doc = found ? createMockWeeklyTestDoc(found) : null;
       const chain = {
@@ -1208,7 +1242,8 @@ export const activateDevFallbackStore = async (
     const origWTFindByIdAndDelete = WeeklyTest.findByIdAndDelete;
     WeeklyTest.findByIdAndDelete = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origWTFindByIdAndDelete.call(WeeklyTest, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       inMemoryWeeklyTests.delete(idStr);
       return Promise.resolve({ _id: idStr });
     };
@@ -1227,7 +1262,8 @@ export const activateDevFallbackStore = async (
     const origCompFindById = Competition.findById;
     Competition.findById = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origCompFindById.call(Competition, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const found = inMemoryCompetitions.get(idStr);
       const doc = found ? createMockCompetitionDoc(found) : null;
       const chain = {
@@ -1254,7 +1290,8 @@ export const activateDevFallbackStore = async (
     const origCompFindByIdAndDelete = Competition.findByIdAndDelete;
     Competition.findByIdAndDelete = function (id, ...args) {
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origCompFindByIdAndDelete.call(Competition, id, ...args);
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       inMemoryCompetitions.delete(idStr);
       return Promise.resolve({ _id: idStr });
     };
@@ -1502,7 +1539,8 @@ export const activateDevFallbackStore = async (
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origCreate.call(Model, data, ...args);
       const itemData = Array.isArray(data) ? data[0] : data;
       const id = itemData._id || new mongoose.Types.ObjectId();
-      const idStr = String(id);
+      if (!id) return buildSingleChain(null);
+    const idStr = String(id);
       const defaults = getSchemaDefaults();
       const doc = {
         _id: id,

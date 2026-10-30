@@ -6,6 +6,8 @@ const debugAttemptSchema = new mongoose.Schema({
   submittedCode: { type: String, required: true },
   status: { type: String, enum: ['Passed', 'Failed', 'Compile Error', 'Runtime Error', 'Timeout'], required: true },
   score: { type: Number, default: 0 },
+  hintsUsed: { type: Number, default: 0 },
+  hintPenalty: { type: Number, default: 0 },
   executionTimeMs: { type: Number, default: 0 },
   feedback: { type: String, default: '' },
   testCaseResults: [

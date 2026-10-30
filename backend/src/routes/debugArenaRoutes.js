@@ -1,12 +1,20 @@
 import { Router } from 'express';
-import { getChallenges, getChallenge, submitAttempt, createChallenge } from '../controllers/debugArenaController.js';
-import { requireAuth } from '../middleware/authMiddleware.js';
+import {
+  getChallenges,
+  getChallenge,
+  getChallengeAttempts,
+  submitAttempt,
+  createChallenge
+} from '../controllers/debugArenaController.js';
+import { requireAuth, optionalAuth } from '../middleware/authMiddleware.js';
 import { requireAdmin } from '../middleware/adminMiddleware.js';
 
 const router = Router();
 
-router.get('/challenges', requireAuth, getChallenges);
-router.get('/challenges/:id', requireAuth, getChallenge);
+router.get('/challenges', optionalAuth, getChallenges);
+router.get('/challenges/:id', optionalAuth, getChallenge);
+router.get('/challenges/:id/attempts', requireAuth, getChallengeAttempts);
+router.get('/attempts', requireAuth, getChallengeAttempts);
 router.post('/challenges/:id/submit', requireAuth, submitAttempt);
 
 // Admin route

@@ -43,6 +43,11 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
 ];
 
 app.use(
@@ -50,6 +55,9 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, or server-to-server tests)
       if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else if (config.env === 'development' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        // In local development, accept any port on localhost or 127.0.0.1
         callback(null, true);
       } else {
         callback(new Error(`CORS Policy Violation: Origin '${origin}' is not authorized.`));

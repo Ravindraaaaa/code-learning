@@ -123,8 +123,8 @@ export const Login = ({ initialRole = 'student' }) => {
       } else if (err.status === 403) {
         setGeneralError(
           isAdmin
-            ? 'Access denied. Administrator credentials required.'
-            : 'Access denied. Student credentials required.'
+            ? 'Access denied. Administrator credentials required. (If you are a student, click "Student Sign In" above).'
+            : 'Access denied. Student credentials required. (If you are an administrator, click "Administrator" above).'
         );
       } else {
         setGeneralError('Invalid email or password.');
@@ -276,6 +276,38 @@ export const Login = ({ initialRole = 'student' }) => {
           </p>
         </div>
 
+        {/* Role Selector Tabs (Student vs Admin) */}
+        <div className="flex rounded-xl bg-stone-100 p-1 border border-stone-200">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('student');
+              setGeneralError('');
+            }}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+              !isAdmin
+                ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <span>🎓 Student Sign In</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('admin');
+              setGeneralError('');
+            }}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+              isAdmin
+                ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <span>🛡️ Administrator</span>
+          </button>
+        </div>
+
         {/* Redirect Notice if routed from protected guard */}
         {wasRedirected && (
           <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-800 text-xs sm:text-sm flex items-center gap-2.5">
@@ -319,7 +351,7 @@ export const Login = ({ initialRole = 'student' }) => {
           <div className="flex items-center justify-between text-stone-500 font-medium">
             <span>Quick Test Accounts:</span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
               onClick={() => {
@@ -329,9 +361,22 @@ export const Login = ({ initialRole = 'student' }) => {
                 setPasswordTouched(true);
                 setGeneralError('');
               }}
-              className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 hover:border-violet-300 hover:text-violet-700 text-stone-700 font-medium transition-colors shadow-2xs"
+              className="px-2 py-1 rounded-lg bg-white border border-stone-200 hover:border-violet-300 hover:text-violet-700 text-stone-700 font-medium transition-colors shadow-2xs"
             >
               Student: <span className="font-mono text-stone-900">student@test.com</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedRole('student');
+                setFormData({ email: 'student@codeforge.dev', password: 'Student@123' });
+                setEmailTouched(true);
+                setPasswordTouched(true);
+                setGeneralError('');
+              }}
+              className="px-2 py-1 rounded-lg bg-white border border-stone-200 hover:border-violet-300 hover:text-violet-700 text-stone-700 font-medium transition-colors shadow-2xs"
+            >
+              Student: <span className="font-mono text-stone-900">student@codeforge.dev</span>
             </button>
             <button
               type="button"
@@ -342,7 +387,7 @@ export const Login = ({ initialRole = 'student' }) => {
                 setPasswordTouched(true);
                 setGeneralError('');
               }}
-              className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 hover:border-violet-300 hover:text-violet-700 text-stone-700 font-medium transition-colors shadow-2xs"
+              className="px-2 py-1 rounded-lg bg-white border border-stone-200 hover:border-violet-300 hover:text-violet-700 text-stone-700 font-medium transition-colors shadow-2xs"
             >
               Admin: <span className="font-mono text-stone-900">admin@codeforge.dev</span>
             </button>

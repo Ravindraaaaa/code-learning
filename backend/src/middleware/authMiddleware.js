@@ -27,6 +27,30 @@ export const requireAuth = (req, res, next) => {
   }
 };
 
+export const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = verifyToken(token);
+    const userId = decoded.id || decoded._id;
+    req.user = {
+      ...decoded,
+      _id: userId,
+      id: userId
+    };
+  } catch {
+    // If token is invalid or expired, continue without req.user
+  }
+
+  next();
+};
+
 export const requireRole = (role) => {
   return (req, res, next) => {
     if (!req.user || req.user.role !== role) {
@@ -47,4 +71,3 @@ export const requireAdmin = (req, res, next) => {
 
   next();
 };
-

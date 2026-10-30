@@ -3,11 +3,12 @@ import mongoose from 'mongoose';
 const debugChallengeSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
-  bugType: { type: String, enum: ['Syntax', 'Logical', 'Runtime'], required: true },
-  difficulty: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'], default: 'Beginner' },
+  bugType: { type: String, enum: ['Syntax', 'Logical', 'Runtime', 'Logical Bug', 'Syntax Bug', 'Runtime Bug'], required: true },
+  difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard', 'Beginner', 'Intermediate', 'Advanced'], default: 'Easy' },
   language: { type: String, required: true },
   buggyCode: { type: String, required: true },
   solutionCode: { type: String, required: true }, // Protected
+  hints: [{ type: String }],
   testCases: [
     {
       input: { type: String, default: '' },
@@ -25,12 +26,14 @@ debugChallengeSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.solutionCode;
   
-  obj.testCases = obj.testCases.map(tc => {
-    if (tc.isHidden) {
-      return { _id: tc._id, isHidden: true };
-    }
-    return tc;
-  });
+  if (obj.testCases && Array.isArray(obj.testCases)) {
+    obj.testCases = obj.testCases.map(tc => {
+      if (tc.isHidden) {
+        return { _id: tc._id, isHidden: true };
+      }
+      return tc;
+    });
+  }
   
   return obj;
 };

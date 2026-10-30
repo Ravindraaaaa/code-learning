@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { DEFAULT_LANGUAGES } from '../services/languageService.js';
 import { DEFAULT_TRACKS } from '../services/trackService.js';
 import { DEFAULT_BATCHES } from '../services/batchService.js';
+import { DEFAULT_DEBUG_CHALLENGES } from '../data/defaultDebugChallenges.js';
 import { logger } from '../utils/logger.js';
 import * as allModels from '../models/index.js';
 
@@ -16,6 +17,7 @@ const inMemoryPurchases = new Map();
 const inMemoryLessons = new Map();
 const inMemoryQuestions = new Map();
 const inMemoryDebugChallenges = new Map();
+const inMemoryDebugAttempts = new Map();
 const inMemoryWeeklyTests = new Map();
 const inMemoryCompetitions = new Map();
 const inMemoryNotifications = new Map();
@@ -368,6 +370,7 @@ const createMockDebugChallengeDoc = (data) => {
     language: data.language,
     buggyCode: data.buggyCode,
     solutionCode: data.solutionCode,
+    hints: data.hints || [],
     testCases: data.testCases || [],
     isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
     status: data.status || 'published',
@@ -377,6 +380,15 @@ const createMockDebugChallengeDoc = (data) => {
   doc.toJSON = function () {
     const copy = { ...this };
     delete copy.solutionCode;
+    if (copy.testCases && Array.isArray(copy.testCases)) {
+      copy.testCases = copy.testCases.map((tc) => {
+        if (tc.isHidden) {
+          const { input, expectedOutput, ...rest } = tc;
+          return rest;
+        }
+        return tc;
+      });
+    }
     return copy;
   };
   doc.save = async function () {
@@ -385,6 +397,34 @@ const createMockDebugChallengeDoc = (data) => {
     return this;
   };
   doc.populate = function () {
+    return this;
+  };
+  return doc;
+};
+
+
+const createMockDebugAttemptDoc = (data) => {
+  const doc = {
+    _id: data._id || new mongoose.Types.ObjectId(),
+    student: data.student,
+    challenge: data.challenge,
+    submittedCode: data.submittedCode,
+    status: data.status,
+    score: data.score || 0,
+    hintsUsed: data.hintsUsed || 0,
+    hintPenalty: data.hintPenalty || 0,
+    executionTimeMs: data.executionTimeMs || 0,
+    feedback: data.feedback || '',
+    testCaseResults: data.testCaseResults || [],
+    createdAt: data.createdAt || new Date(),
+    updatedAt: new Date(),
+  };
+  doc.toJSON = function () {
+    return { ...this };
+  };
+  doc.save = async function () {
+    this.updatedAt = new Date();
+    inMemoryDebugAttempts.set(String(this._id), this);
     return this;
   };
   return doc;
@@ -553,6 +593,11 @@ export const activateDevFallbackStore = async (
   if (Notification) Notification._fallbackPatched = true;
 
   logger.info('[DevFallbackStore] Initializing CodeForge In-Memory Data Store...');
+
+  for (const chal of DEFAULT_DEBUG_CHALLENGES) {
+    const doc = createMockDebugChallengeDoc(chal);
+    inMemoryDebugChallenges.set(String(doc._id), doc);
+  }
 
   // 1. Seed Languages
   for (const lang of DEFAULT_LANGUAGES) {
@@ -1157,6 +1202,9 @@ export const activateDevFallbackStore = async (
       if (mongoose.connection.readyState === 1 && !fallbackActive) return origDCFind.call(DebugChallenge, query, ...args);
       let results = Array.from(inMemoryDebugChallenges.values()).map(createMockDebugChallengeDoc);
       if (query.status) results = results.filter((d) => d.status === query.status);
+      if (query.language && query.language !== 'All') results = results.filter((d) => String(d.language).toLowerCase() === String(query.language).toLowerCase());
+      if (query.difficulty && query.difficulty !== 'All') results = results.filter((d) => String(d.difficulty).toLowerCase() === String(query.difficulty).toLowerCase());
+      if (query.isActive !== undefined) results = results.filter((d) => d.isActive === query.isActive);
       return buildChain(results);
     };
 
@@ -1195,6 +1243,55 @@ export const activateDevFallbackStore = async (
     const idStr = String(id);
       inMemoryDebugChallenges.delete(idStr);
       return Promise.resolve({ _id: idStr });
+    };
+  }
+
+  
+  let DebugAttempt = mongoose.models.DebugAttempt || (UserParam && UserParam.DebugAttempt);
+  if (DebugAttempt) {
+    DebugAttempt._fallbackPatched = true;
+    const origDAFind = DebugAttempt.find;
+    DebugAttempt.find = function (query = {}, ...args) {
+      if (mongoose.connection.readyState === 1 && !fallbackActive) return origDAFind.call(DebugAttempt, query, ...args);
+      let results = Array.from(inMemoryDebugAttempts.values()).map(createMockDebugAttemptDoc);
+      if (query.student) {
+        const studentIdStr = String(query.student._id || query.student);
+        results = results.filter(a => String(a.student._id || a.student) === studentIdStr);
+      }
+      if (query.challenge) {
+        const challengeIdStr = String(query.challenge._id || query.challenge);
+        results = results.filter(a => String(a.challenge._id || a.challenge) === challengeIdStr);
+      }
+      if (query.status) {
+        results = results.filter(a => a.status === query.status);
+      }
+      return buildChain(results);
+    };
+
+    const origDAFindOne = DebugAttempt.findOne;
+    DebugAttempt.findOne = function (query = {}, ...args) {
+      if (mongoose.connection.readyState === 1 && !fallbackActive) return origDAFindOne.call(DebugAttempt, query, ...args);
+      let results = Array.from(inMemoryDebugAttempts.values()).map(createMockDebugAttemptDoc);
+      if (query.student) {
+        const studentIdStr = String(query.student._id || query.student);
+        results = results.filter(a => String(a.student._id || a.student) === studentIdStr);
+      }
+      if (query.challenge) {
+        const challengeIdStr = String(query.challenge._id || query.challenge);
+        results = results.filter(a => String(a.challenge._id || a.challenge) === challengeIdStr);
+      }
+      if (query.status) {
+        results = results.filter(a => a.status === query.status);
+      }
+      return buildSingleChain(results[0] || null);
+    };
+
+    const origDACreate = DebugAttempt.create;
+    DebugAttempt.create = function (data, ...args) {
+      if (mongoose.connection.readyState === 1 && !fallbackActive) return origDACreate.call(DebugAttempt, data, ...args);
+      const doc = createMockDebugAttemptDoc(data);
+      inMemoryDebugAttempts.set(String(doc._id), doc);
+      return Promise.resolve(doc);
     };
   }
 

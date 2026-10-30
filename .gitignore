@@ -31,3 +31,5 @@ lerna-debug.log*
 *.sw?
 .DS_Store
 Thumbs.db
+.temp_exec/
+scratch/
